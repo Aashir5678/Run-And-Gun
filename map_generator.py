@@ -47,6 +47,9 @@ class Block:
 	def __hash__(self):
 		return hash((self.x, self.y))
 
+	def get_rect(self):
+		return self.block_rect
+
 	def update(self, x, y, color):
 		self.x = x
 		self.y = y
