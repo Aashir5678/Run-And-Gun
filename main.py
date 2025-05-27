@@ -3,6 +3,7 @@ from random import randint
 from player import Player, Bullet
 from map_generator import *
 from constants import *
+from asset_loader import *
 from stat_bars import Bar
 
 
@@ -26,14 +27,15 @@ def main():
 	# Load assets
 
 
-	still_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_assets()
+	still_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_assets()
 	hurt_textures, death_textures = load_hurt_assets()
 	single_shot_sfx, reload_sfx = load_sfx()
+
 
 	gun_channel = pygame.mixer.Channel(0)
 	music_channel = pygame.mixer.Channel(1)
 
-	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures)
+	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
 
 	health_bar = Bar(screen, (20, 40), HEALTH_RED)
 	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW)
@@ -79,14 +81,14 @@ def main():
 		if not player.aiming and player.health > 0:
 			handle_movement(keys, player, ticks)
 
-			if keys[pygame.K_r] and reload_sfx is not None:
-				reload_sfx.play()
+			if keys[pygame.K_r] and reload_sfx is not None and player.ammo < ROUNDS_IN_MAG:
+				gun_channel.play(reload_sfx)
 
 
-		for bullet in bullets:
+		for i, bullet in enumerate(bullets):
 			if bullet.x > SCREEN_WIDTH or bullet.x < 0 or bullet.y > SCREEN_HEIGHT or bullet.y < 0:
-				bullets.remove(bullet)
-				continue
+				bullets.pop(i)
+				break
 
 			bullet.update()
 			bullet.draw()
@@ -113,7 +115,7 @@ def main():
 				player.animation_stages["flip"] = 0
 
 
-				if player.vel_x == 0 and not player.hurt and player.health > 0 and not player.aimed_shot and not player.noaim_shooting:
+				if player.vel_x == 0 and not player.in_animation: # not player.hurt and player.health > 0 and not player.aimed_shot and not player.noaim_shooting and not player.
 					player.current_texture = player.still_texture
 					player.animation_stages["walk"] = 0
 					player.animation_stages["run"] = 0
@@ -280,6 +282,9 @@ def handle_movement(keys, player, ticks):
 		else:
 			player.vel_x = SPRINTING_VEL
 
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
 	elif keys[pygame.K_a]:
 		if not player.running:
 			player.vel_x = -WALKING_VEL
@@ -287,26 +292,36 @@ def handle_movement(keys, player, ticks):
 		else:
 			player.vel_x = -SPRINTING_VEL
 
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
 	elif keys[pygame.K_q] and ticks % 5 == 0:
 		player.hurt = True
 		player.health -= 0.1
 
 	if keys[pygame.K_SPACE] and not player.jumping and player.current_texture not in player.flip_textures and player.stamina >= STAMINA_TO_FLIP:
+
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
 		player.stamina -= STAMINA_TO_FLIP
 		player.vel_y += -BLOCK_SIZE * JUMP_CONSTANT
 		player.jumping = True
 		player.update()
 
 	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15:
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
 		player.running = True
 
 	else:
 		player.running = False
 
 
-	if keys[pygame.K_r]:
-		player.ammo = ROUNDS_IN_MAG
+	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG:
 		player.running = False
+		player.standing_reload = True
 		
 def handle_player_stats(player):
 	if player.stamina <= 0.05 and not player.running:
@@ -329,97 +344,6 @@ def handle_player_stats(player):
 		player.health *= REGEN_FACTOR
 
 
-def load_player_asset(index, type_="walking"):
-	if type_ == "walking":
-		path = f"Assets//walking//walk{str(index)}.png"
-
-	elif type_ == "running":
-		path = f"Assets//running/run{str(index)}.png"
-
-	elif type_ == "flip":
-		path = f"Assets//flip//flip{str(index)}.png"
-
-	elif type_ == "aimed shot":
-		path = f"Assets//shooting_standing//aimed_shot{str(index)}.png"
-
-	elif type_ == "noaim shot":
-		path = f"Assets//shooting_standing//noaim{str(index)}.png"
-
-	elif type_ == "hurt":
-		path = f"Assets//hurt_death//hurt{str(index)}.png"
-
-	elif type_ == "death":
-		path = f"Assets//hurt_death//dead{str(index)}.png"
-
-	try:
-		asset = pygame.image.load(path)
-
-	except:
-		print (f"path {path} not found")
-		return None
-
-
-	return pygame.transform.scale_by(asset, 1.5).convert_alpha()
-
-
-
-def load_assets():
-
-	still_player_surf = pygame.image.load("Assets//Standing.png")
-	still_player_surf = pygame.transform.scale_by(still_player_surf, 1.5).convert_alpha()
-
-	aim = pygame.image.load("Assets//Aim.png")
-	aim = pygame.transform.scale_by(aim, 1.5).convert_alpha()
-
-	bullet = pygame.image.load("Assets//bullet.png")
-	bullet = pygame.transform.scale_by(bullet, 0.25).convert_alpha()
-
-	empty_bullet = pygame.image.load("Assets//empty_bullet.png")
-	empty_bullet = pygame.transform.scale_by(empty_bullet, 0.25).convert_alpha()
-
-	walking = []
-	running = []
-	aimed_shooting = []
-	no_aim_shooting = []
-	flips = []
-
-	for i in range(1, 13):
-		walking.append(load_player_asset(i, type_="walking"))
-		running.append(load_player_asset(i, type_="running"))
-
-		if i <= 4:
-			aimed_shooting.append(load_player_asset(i, type_="aimed shot"))
-			no_aim_shooting.append(load_player_asset(i, type_="noaim shot"))
-
-		if i <= 8:
-			flips.append(load_player_asset(i, type_="flip"))
-
-
-	return still_player_surf, walking, running, aim, aimed_shooting, no_aim_shooting, bullet, empty_bullet, flips
-
-
-def load_hurt_assets():
-	hurt_textures = []
-	death_textures = []
-
-	for i in range(1, 6):
-		death_textures.append(load_player_asset(i, type_="death"))
-
-		if i <= 4:
-			hurt_textures.append(load_player_asset(i, type_="hurt"))
-
-
-
-	return hurt_textures, death_textures
-
-
-
-def load_sfx():
-	single_shot_sfx = pygame.mixer.Sound("Assets//sfx//single_shot.wav")
-	# reload_sfx = pygame.mixer.Sound("Assets//sfx//reload.wav")
-
-
-	return single_shot_sfx, None
 
 
 def draw_background(screen, player):
