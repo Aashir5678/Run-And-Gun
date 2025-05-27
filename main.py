@@ -247,8 +247,6 @@ def main():
 		pygame.display.flip()
 		pygame.display.update()
 
-		player.stamina = 1.0
-
 
 	pygame.quit()
 
