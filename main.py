@@ -30,8 +30,8 @@ def main():
 	hurt_textures, death_textures = load_hurt_assets()
 	single_shot_sfx, reload_sfx = load_sfx()
 
-
-	# single_shot_sfx, reload_sfx = load_sfx()
+	gun_channel = pygame.mixer.Channel(0)
+	music_channel = pygame.mixer.Channel(1)
 
 	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures)
 
@@ -55,6 +55,9 @@ def main():
 
 
 	while run:
+		# if not music_channel.get_busy():
+		# 	music_channel.queue(song)
+
 		ticks += 1
 		clock.tick(FPS)
 		draw_background(screen, player)
@@ -147,10 +150,8 @@ def main():
 				player.ammo -= 1
 				bullets.append(bullet)
 
-				if pygame.mixer.get_busy():
-					pygame.mixer.stop()
+				gun_channel.play(single_shot_sfx)
 
-				single_shot_sfx.play()
 
 			else:
 				player.aimed_shot = False
@@ -189,10 +190,8 @@ def main():
 				player.ammo -= 1
 				bullets.append(bullet)
 
-				if pygame.mixer.get_busy():
-					pygame.mixer.stop()
+				gun_channel.play(single_shot_sfx)
 
-				single_shot_sfx.play()
 
 			else:
 				player.noaim_shooting = False
@@ -254,14 +253,14 @@ def main():
 
 def draw_ammo(screen, ammo, bullet_texture, empty_bullet_texture):
 
-	x = SCREEN_WIDTH - (bullet_texture.get_width() * ROUNDS_IN_MAG)
+	x = (SCREEN_WIDTH - ((bullet_texture.get_width()) * ROUNDS_IN_MAG)) + 70
 	y = 40
 
 
 	for i in range(1, ROUNDS_IN_MAG+1):
 		if i == (ROUNDS_IN_MAG / 2) + 1:
 			y += bullet_texture.get_height()
-			x = SCREEN_WIDTH - (bullet_texture.get_width() * ROUNDS_IN_MAG)
+			x = (SCREEN_WIDTH - ((bullet_texture.get_width()) * ROUNDS_IN_MAG)) + 70
 
 		if ammo >= i:
 			screen.blit(bullet_texture, (x, y))
