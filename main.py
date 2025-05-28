@@ -1,10 +1,12 @@
 import pygame
-from random import randint
-from player import Player, Bullet
-from map_generator import *
-from constants import *
-from stat_bars import Bar
-from math import e
+from random import randint, choice
+from sprites.player import Player, Bullet
+from sprites.enemy import Enemy
+from utilities.map_generator import *
+from utilities.constants import *
+from utilities.asset_loader import *
+from utilities.stat_bars import Bar
+
 
 
 """
@@ -13,6 +15,9 @@ Sprites: https://craftpix.net/freebies/free-pixel-prototype-character-sprites-fo
 
 
 pygame.init()
+pygame.mixer.init()
+
+
 
 
 def main():
@@ -23,15 +28,31 @@ def main():
 	# Load assets
 
 
-	still_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, bullet_texture, flip_textures = load_assets()
+	still_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
+	hurt_textures, death_textures = load_player_hurt_assets()
+	single_shot_sfx, reload_sfx = load_sfx()
 
-	
-	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures)
+
+	gun_channel = pygame.mixer.Channel(0)
+	music_channel = pygame.mixer.Channel(1)
+
+	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
 
 	health_bar = Bar(screen, (20, 40), HEALTH_RED)
 	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW)
 
+	ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(bullet_texture, 90), 3)
+	empty_ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(empty_bullet_texture, 90), 3)
+
+	enemy_standing_texture, enemy_walking_textures, enemy_standing_shooting_textures = load_enemy_assets()
+	# print (len(enemy_walking_textures))
 	bullets = []
+
+	enemies = []
+
+
+	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
+
 
 	seed = randint(0, 999)
 	noise_num = 0
@@ -44,12 +65,21 @@ def main():
 	ticks = 0
 
 
+	fps_sum = []
+
+
 	while run:
+		# if not music_channel.get_busy():
+		# 	music_channel.queue(song)
+
+
 		ticks += 1
 		clock.tick(FPS)
-		draw_background(screen)
+		draw_background(screen, player)
 		pygame.display.set_caption(str(round(clock.get_fps())))
 
+
+		fps_sum.append(clock.get_fps())
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				run = False
@@ -63,53 +93,182 @@ def main():
 
 
 		keys = pygame.key.get_pressed()
-		if not player.aiming:
-			handle_movement(keys, player)
+		if not player.aiming and player.health > 0:
+			handle_movement(keys, player, ticks)
+
+			if keys[pygame.K_r] and reload_sfx is not None and player.ammo < ROUNDS_IN_MAG:
+				gun_channel.play(reload_sfx)
 
 
-		for bullet in bullets:
+		for i, bullet in enumerate(bullets):
+			if bullet.x > SCREEN_WIDTH or bullet.x < 0 or bullet.y > SCREEN_HEIGHT or bullet.y < 0:
+				bullets.pop(i)
+				break
+
+			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
+				player.hurt = True
+
+				if bullet.y <= (player.y + (player.get_height() // 4)):
+					print ("headshot")
+					player.health -= HEAD_SHOT_DAMAGE
+
+				elif bullet.y <= (player.y + (player.get_height() // 2)):
+					print ("body shot")
+					player.health -= BODY_SHOT_DAMAGE
+
+				else:
+					print ("leg shot")
+					player.health -= LEG_SHOT_DAMAGE
+
+				bullets.remove(bullet)
+
+				# pygame.time.delay(2000)
+
+			for enemy in enemies:
+				if bullet.hit_entity(enemy) and bullet.is_player_bullet():
+					enemies.remove(enemy)
+					bullets.remove(bullet)
+					break
+
 			bullet.update()
 			bullet.draw()
 
+
 		for block in blocks:
-			block.draw()
+			
+			if player.health > 0:
+				block.draw()
+
 			block.x -= scroll_speed
 
 			if block.x < -BLOCK_SIZE * 3 and block in blocks:
 				blocks.remove(block)
 
+
+			# Prevents player from sinking in to the floor
 			if (player.on_block(block) and player.vel_y > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks:
-				player.y = block.y - player.get_height()
+				player.y = block.y - player.get_height() + 1
 				player.vel_y = 0
+
+
+				if player.jumping and (player.animation_stages["flip"] != 0 and player.animation_stages["flip"] != len(player.flip_textures) - 1):
+					player.health = 0
+
 				player.jumping = False
 
-				player.flip_index = 0
+				player.animation_stages["flip"] = 0
 
-				if player.vel_x == 0:
+
+				if player.vel_x == 0 and not player.in_animation:
 					player.current_texture = player.still_texture
-					player.walk_index = 0
-					player.run_index = 0
+					player.animation_stages["walk"] = 0
+					player.animation_stages["run"] = 0
+
+
+
+			for bullet in bullets:
+				if bullet.hit_entity(block):
+					bullets.remove(bullet)
+					break
+
+
+
+			for enemy in enemies:
+				if (enemy.on_block(block) and enemy.vel_y > 0) or (abs(enemy.x - block.x) <= BLOCK_SIZE and abs(enemy.y - block.y) < enemy.get_height()) and block in surface_blocks:
+					enemy.y = block.y - enemy.get_height() + 1
+					enemy.vel_y = 0
+					# enemy.acc_y = 0
+
+
+					if enemy.vel_x == 0 and not enemy.in_animation:
+						enemy.current_texture = enemy.still_texture
+						enemy.animation_stages["walk"] = 0
+						enemy.animation_stages["run"] = 0
 
 
 		
+
+
+
+
+		mx, my = pygame.mouse.get_pos()
 		
-		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0]:
+		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % SHOOTING_COOLDOWN == 0 and player.ammo > 0 and not player.jumping:
+
 			player.aiming = True
 			player.aimed_shot = True
+
+			
 			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 4)), bullet_texture, flip=player.flipped)
 
-			mx, my = pygame.mouse.get_pos()
-			bullet.set_vel(mx, my)
+			
+			valid_bullet = bullet.set_vel(mx, my)
 
-			bullets.append(bullet)
-			pygame.time.delay(SHOOTING_COOLDOWN)
+			if bullet.vel_x < 0 and valid_bullet:
+				player.flipped = True
 
-		elif pygame.mouse.get_pressed()[2]:
+			elif bullet.vel_x > 0 and valid_bullet:
+				player.flipped = False
+
+
+			if valid_bullet:
+				player.ammo -= 1
+				bullets.append(bullet)
+
+				gun_channel.play(single_shot_sfx)
+
+
+			else:
+				player.aimed_shot = False
+
+
+			
+
+		elif pygame.mouse.get_pressed()[2] and not player.jumping:
 			player.aiming = True
 
+			if mx < player.x and not player.flipped:
+				player.flipped = True
+
+			elif mx > player.x and player.flipped:
+				player.flipped = False
+
+
+			for enemy in enemies:
+				enemy.aiming = True
+				enemy.aimed_shot = True
+
+
+
+		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping and ticks % SHOOTING_COOLDOWN == 0 :
+			player.noaim_shooting = True
+			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 2)), bullet_texture, flip=player.flipped)
+
+			mx += randint(-SPRAY_INNACURACY, SPRAY_INNACURACY)
+			my += randint(-SPRAY_INNACURACY, SPRAY_INNACURACY)
+
+			valid_bullet = bullet.set_vel(mx, my)
+
+			if bullet.vel_x < 0 and valid_bullet:
+				player.flipped = True
+
+			elif bullet.vel_x > 0 and valid_bullet:
+				player.flipped = False
+
+
+			if valid_bullet:
+				player.ammo -= 1
+				bullets.append(bullet)
+
+				gun_channel.play(single_shot_sfx)
+
+
+			else:
+				player.noaim_shooting = False
 
 		else:
 			player.aiming = False
+			player.noaim_shooting = False
 			player.aimed_shot = False
 
 		player.change_movement_texture(ticks)
@@ -132,21 +291,50 @@ def main():
 		if player.y >= SCREEN_HEIGHT:
 			player.x = SCREEN_WIDTH // 2
 			player.y = 0
+			player.health = 1.0
+			player.stamina = 1.0
+
+		# if player.health <= 0:
+		# 	game_over(screen, player)
+		# 	screen.fill(WHITE)
+		# 	main()
+
+		if random.randint(0, ENEMY_SPAWN_RATE) == 0 and surface_blocks:
+			random_block = choice(surface_blocks)
+			print (random_block)
+			
+			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST:
+				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, aimed_shooting_textures=enemy_standing_shooting_textures))
 
 
-		if player.stamina <= 0.05 and not player.running:
-			player.stamina += 0.01
 
-		elif player.stamina < 1.0 and player.vel_x == 0 and not player.running:
-			player.stamina *= (STAMINA_RECOVER_FACTOR ** 3)
+		if player.health <= 0:
+			enemies.clear()
+			bullets.clear()
 
-		elif player.stamina < 1.0:
-			player.stamina *= STAMINA_RECOVER_FACTOR
+		handle_player_stats(player)
 
-
+		health_bar.set_value(player.health)
 		stamina_bar.set_value(player.stamina)
-		stamina_bar.draw()
-		health_bar.draw()
+		# print (player.health)
+
+		if player.health > 0:
+			stamina_bar.draw()
+			health_bar.draw()
+			draw_ammo(screen, player.ammo, ammo_texture, empty_ammo_texture)
+
+
+		for enemy in enemies:
+			enemy.change_movement_texture(ticks)
+
+
+			bullet = enemy.follow_player(player, ticks, bullet_texture)
+
+			if bullet is not None:
+				bullets.append(bullet)
+
+			enemy.update()
+			enemy.draw()
 
 		player.update()
 		player.draw()
@@ -155,16 +343,42 @@ def main():
 		pygame.display.update()
 
 
+	print (sum(fps_sum) / len(fps_sum))
 	pygame.quit()
 
 
-def handle_movement(keys, player):
+
+def draw_ammo(screen, ammo, bullet_texture, empty_bullet_texture):
+
+	x = (SCREEN_WIDTH - ((bullet_texture.get_width()) * ROUNDS_IN_MAG)) + 70
+	y = 40
+
+
+	for i in range(1, ROUNDS_IN_MAG+1):
+		if i == (ROUNDS_IN_MAG / 2) + 1:
+			y += bullet_texture.get_height()
+			x = (SCREEN_WIDTH - ((bullet_texture.get_width()) * ROUNDS_IN_MAG)) + 70
+
+		if ammo >= i:
+			screen.blit(bullet_texture, (x, y))
+
+		else:
+			screen.blit(empty_bullet_texture, (x, y))
+
+		x += bullet_texture.get_width() * 1.5
+
+
+
+def handle_movement(keys, player, ticks):
 	if keys[pygame.K_d]:
 		if not player.running:
 			player.vel_x = WALKING_VEL
 
 		else:
 			player.vel_x = SPRINTING_VEL
+
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
 
 	elif keys[pygame.K_a]:
 		if not player.running:
@@ -173,74 +387,67 @@ def handle_movement(keys, player):
 		else:
 			player.vel_x = -SPRINTING_VEL
 
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
+	elif keys[pygame.K_q] and ticks % 5 == 0:
+		player.hurt = True
+		player.health -= 0.1
+
 	if keys[pygame.K_SPACE] and not player.jumping and player.current_texture not in player.flip_textures and player.stamina >= STAMINA_TO_FLIP:
+
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
 		player.stamina -= STAMINA_TO_FLIP
 		player.vel_y += -BLOCK_SIZE * JUMP_CONSTANT
 		player.jumping = True
 		player.update()
 
 	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15:
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
 		player.running = True
 
 	else:
 		player.running = False
-	
-
-def load_player_asset(index, type_="walking"):
-	if type_ == "walking":
-		path = f"Assets//walking//walk{str(index)}.png"
-
-	elif type_ == "running":
-		path = f"Assets//running/run{str(index)}.png"
-
-	elif type_ == "flip":
-		path = f"Assets//flip//flip{str(index)}.png"
-
-	elif type_ == "aimed shot":
-		path = f"Assets//shooting_standing//aimed_shot{str(index)}.png"
-
-	try:
-		asset = pygame.image.load(path)
-
-	except:
-		print (f"path {path} not found")
-		return None
 
 
-	return pygame.transform.scale_by(asset, 1.5).convert_alpha()
+	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG:
+		player.running = False
+		player.standing_reload = True
+
+		
+def handle_player_stats(player):
+	if player.stamina <= 0.05 and not player.running:
+		player.stamina += 0.01
+
+	elif player.stamina < 1.0 and player.vel_x == 0 and not player.running:
+		player.stamina *= (STAMINA_RECOVER_FACTOR ** 3)
+
+	elif player.stamina < 1.0:
+		player.stamina *= STAMINA_RECOVER_FACTOR
+
+
+	if player.health <= 0.05 and not player.hurt and player.health > 0:
+		player.health += 0.01
+
+	elif player.health < 1.0 and player.health > 0 and player.vel_x == 0 and not player.hurt:
+		player.health *= REGEN_FACTOR ** 3
+
+	elif player.health < 1.0 and player.health > 0:
+		player.health *= REGEN_FACTOR
 
 
 
-def load_assets():
 
-	still_player_surf = pygame.image.load("Assets//Standing.png")
-	still_player_surf = pygame.transform.scale_by(still_player_surf, 1.5)
-	aim = pygame.image.load("Assets//Aim.png")
-	aim = pygame.transform.scale_by(aim, 1.5)
+def draw_background(screen, player):
+	if player.health > 0:
+		screen.fill(SKY_BLUE)
 
-	bullet = pygame.image.load("Assets//bullet.png")
-	bullet = pygame.transform.scale_by(bullet, 0.25)
-
-	walking = []
-	running = []
-	aimed_shooting = []
-	flips = []
-
-	for i in range(1, 13):
-		walking.append(load_player_asset(i, type_="walking"))
-		running.append(load_player_asset(i, type_="running"))
-
-		if i <= 4:
-			aimed_shooting.append(load_player_asset(i, type_="aimed shot"))
-
-		if i <= 8:
-			flips.append(load_player_asset(i, type_="flip"))
-
-
-	return still_player_surf, walking, running, aim, aimed_shooting, bullet, flips
-
-def draw_background(screen):
-	screen.fill(SKY_BLUE)
+	else:
+		screen.fill(HEALTH_RED)
 
 
 
