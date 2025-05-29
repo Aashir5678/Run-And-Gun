@@ -10,6 +10,7 @@ class Enemy(Player):
 	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None):
 		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=None, death_textures=death_textures, standing_reload_textures=None)
 		self.shoot_dist = randint(MIN_ENEMY_SHOOT_DIST, MAX_ENEMY_SHOOT_DIST)
+		self.at_shoot_dist = False
 
 	def follow_player(self, player, ticks, bullet_texture):
 		dist_x = player.x - self.x
@@ -21,6 +22,7 @@ class Enemy(Player):
 
 
 		if (abs(dist_x) >= player.get_width() + self.shoot_dist) or (self.x + self.get_width() + 10 > SCREEN_WIDTH):
+			self.at_shoot_dist = True
 			if dist_x > 0:
 				self.vel_x = WALKING_VEL
 
@@ -31,7 +33,7 @@ class Enemy(Player):
 
 		else:
 			self.vel_x = 0
-
+			self.at_shoot_dist = False
 			self.aiming = True
 			self.aimed_shot = True
 

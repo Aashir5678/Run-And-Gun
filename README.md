@@ -6,4 +6,9 @@
 A and D are to move forwards and backwards, hold left shift while moving to sprint, space to do a flip,
 hold right click to aim then left click to shoot, or don't aim and spray shoot.
 
-Press Q to take damage and R to reload.
+
+Press R to reload. Hold C to crouch, and while holding C press X to go prone
+
+
+Your stamina and health go up faster when crouching / lying, and getting shot in the head / shooting enemies in the head will
+deal more damage than shots in the body and legs.

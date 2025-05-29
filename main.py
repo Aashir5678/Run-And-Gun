@@ -57,7 +57,7 @@ def main():
 	fps_font = pygame.font.SysFont('Arial', 30)
 
 
-	seed = randint(0, 999)
+	seed = randint(-9999, 9999)
 	noise_num = 0
 	height_factor = 0.5
 	scroll_speed = 0
@@ -66,6 +66,8 @@ def main():
 	surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
 	clock = pygame.time.Clock()
 	ticks = 0
+
+	print (f"Seed: {str(seed)}")
 
 
 	fps_sum = []
@@ -98,7 +100,7 @@ def main():
 
 
 		keys = pygame.key.get_pressed()
-		if not player.aiming and player.health > 0:
+		if player.health > 0 and not player.noaim_shooting:
 			handle_movement(keys, player, ticks)
 
 			if keys[pygame.K_r] and reload_sfx is not None and player.ammo < ROUNDS_IN_MAG:
@@ -114,7 +116,7 @@ def main():
 			block.x -= scroll_speed
 			block.block_rect.x = block.x
 
-			if block.x < -BLOCK_SIZE * 3 and block in blocks:
+			if block.x < -SCREEN_WIDTH * RENDER_DISTANCE and block in blocks:
 				blocks.remove(block)
 
 
@@ -166,7 +168,9 @@ def main():
 				break
 
 			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
-				player.hurt = True
+				if not player.sitting and not player.lying:
+					player.hurt = True
+
 				player.take_damage(bullet)
 				bullets.remove(bullet)
 
@@ -181,6 +185,11 @@ def main():
 						enemies.remove(enemy)
 					bullets.remove(bullet)
 					break
+
+
+				# Enemies advance on player if the player is camping behind a hill or if enemy has an ineffective shooting spot
+				elif not bullet.is_player_bullet() and bullet.get_distance(player) > player.get_height() and enemy.at_shoot_dist:
+					enemy.shoot_dist -= 5
 
 			bullet.update()
 			bullet.draw()
@@ -240,10 +249,11 @@ def main():
 
 
 			for enemy in enemies:
-				enemy.aiming = True
-				enemy.aimed_shot = True
-				enemy.vel_x = 0
-				enemy.shoot_dist = enemy.x
+				if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
+					enemy.aiming = True
+					enemy.aimed_shot = True
+					enemy.vel_x = 0
+					enemy.shoot_dist = enemy.x
 
 
 
@@ -387,7 +397,7 @@ def draw_ammo(screen, ammo, bullet_texture, empty_bullet_texture):
 
 
 def handle_movement(keys, player, ticks):
-	if keys[pygame.K_d] and not player.sitting and not player.lying:
+	if keys[pygame.K_d] and not player.sitting and not player.lying and not player.aiming:
 		if not player.running:
 			player.vel_x = WALKING_VEL
 
@@ -397,7 +407,7 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 
-	elif keys[pygame.K_a] and not player.sitting and not player.lying:
+	elif keys[pygame.K_a] and not player.sitting and not player.lying and not player.aiming:
 		if not player.running:
 			player.vel_x = -WALKING_VEL
 
@@ -407,30 +417,37 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 
-	elif keys[pygame.K_c] and ticks % 10 == 0:
+	elif keys[pygame.K_c]:
 		player.lying = False
 		if not player.sitting:
 			player.sitting = True
 			player.y += player.get_height() // 2
 
-		else:
-			# player.y -= player.get_height() 
-			player.sitting = False
+
+
+		# else:
+		# 	# player.y -= player.get_height() 
+		# 	player.sitting = False
+
+
 
 		return
 
-	elif keys[pygame.K_x] and ticks % 10 == 0 and (player.sitting or player.lying):
+	elif keys[pygame.K_x] and (player.sitting or player.lying) and not player.aiming:
 		player.sitting = False
 		if not player.lying:
 			player.lying = True
 			player.y += player.get_height()
 
 
-		else:
-			player.lying = False
+		# else:
+		# 	player.lying = False
 
 
-		return
+	else:
+		player.sitting = False
+		player.lying = False
+
 	# elif keys[pygame.K_q] and ticks % 5 == 0:
 	# 	player.hurt = True
 	# 	player.health -= 0.1
@@ -444,6 +461,8 @@ def handle_movement(keys, player, ticks):
 		player.vel_y += -BLOCK_SIZE * JUMP_CONSTANT
 		player.jumping = True
 		player.lying = False
+		player.aiming = False
+		player.aimed_shot = False
 		player.sitting = False
 		player.update()
 
@@ -451,6 +470,8 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 		player.sitting = False
+		player.aiming = False
+		player.aimed_shot = False
 
 		player.running = True
 
@@ -458,7 +479,7 @@ def handle_movement(keys, player, ticks):
 		player.running = False
 
 
-	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG:
+	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG and not player.aiming:
 		player.running = False
 		# player.sitting = False
 		player.standing_reload = True
@@ -467,6 +488,9 @@ def handle_movement(keys, player, ticks):
 def handle_player_stats(player):
 	if player.stamina <= 0.05 and not player.running:
 		player.stamina += 0.01
+
+	elif player.stamina < 1.0 and (player.sitting or player.lying):
+		player.stamina *= (STAMINA_RECOVER_FACTOR ** 5)
 
 	elif player.stamina < 1.0 and player.vel_x == 0 and not player.running:
 		player.stamina *= (STAMINA_RECOVER_FACTOR ** 3)
@@ -477,6 +501,9 @@ def handle_player_stats(player):
 
 	if player.health <= 0.05 and not player.hurt and player.health > 0:
 		player.health += 0.01
+
+	elif player.health < 1.0 and player.health > 0 and (player.sitting or player.lying):
+		player.health *= REGEN_FACTOR ** 4
 
 	elif player.health < 1.0 and player.health > 0 and player.vel_x == 0 and not player.hurt:
 		player.health *= REGEN_FACTOR ** 3
