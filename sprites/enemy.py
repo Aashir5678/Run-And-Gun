@@ -9,7 +9,7 @@ pygame.init()
 class Enemy(Player):
 	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None):
 		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=None, death_textures=death_textures, standing_reload_textures=None)
-
+		self.shoot_dist = randint(MIN_ENEMY_SHOOT_DIST, MAX_ENEMY_SHOOT_DIST)
 
 	def follow_player(self, player, ticks, bullet_texture):
 		dist_x = player.x - self.x
@@ -19,7 +19,8 @@ class Enemy(Player):
 		# 	self.aimed_shot = True
 
 
-		if abs(dist_x) > self.get_width() + player.get_width() + ENEMY_SHOOT_DIST:
+
+		if (abs(dist_x) >= player.get_width() + self.shoot_dist) or (self.x + self.get_width() + 10 > SCREEN_WIDTH):
 			if dist_x > 0:
 				self.vel_x = WALKING_VEL
 
@@ -39,33 +40,57 @@ class Enemy(Player):
 
 				
 				innacuarte_x = player.x + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
-				innacuarte_y = player.y + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
+				innacuarte_y = player.y + (player.get_height() / 2) + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
 
 				valid_bullet = bullet.set_vel(innacuarte_x, innacuarte_y)
 
 
-				if player.direction == self.direction:
-					if player.direction == "left":
-						self.direction = "right"
-
-					else:
-						self.direction = "left"
-
-
-					self.flipped = True
-
-				else:
-					self.flipped = False
-				# if bullet.vel_x < 0 and valid_bullet:
-				# 	self.flipped = True
-
-				# elif bullet.vel_x > 0 and valid_bullet:
-				# 	self.flipped = False
-
-				
 				if valid_bullet:
 					return bullet 
 
-			# if self.flipped:
-			# 	self.current_texture = pygame.transform.flip(self.current_texture, True, False)
-			# 	# self.flipped = False
+
+
+	def change_movement_texture(self, player, ticks):
+		super().change_movement_texture(ticks)
+
+
+		if self.aiming and self.vel_x == 0:
+			if self.aiming_texture is not None:
+				self.current_texture = self.aiming_texture
+
+			if self.aimed_shot and ticks % ENEMY_SHOOT_ANIMATION_SPEED == 0:
+				self.current_texture = self.aimed_shooting_textures[self.animation_stages["aimed_shot"]]
+
+				self.animation_stages["aimed_shot"] += 1
+
+
+				if self.flipped:
+					self.x += RECOIL * 5
+
+				else:
+					self.x -= RECOIL * 5
+
+				self.rect.x = self.x
+
+				if self.animation_stages["aimed_shot"] >= len(self.aimed_shooting_textures):
+					self.aimed_shot = False
+					self.animation_stages["aimed_shot"] = 0
+
+
+			# self.vel_x = 0
+
+
+
+			if self.x > player.x:
+				self.flipped = True
+				self.current_texture = pygame.transform.flip(self.aimed_shooting_textures[self.animation_stages["aimed_shot"]], True, False)
+
+			else:
+				self.flipped = False
+				self.current_texture = self.aimed_shooting_textures[self.animation_stages["aimed_shot"]]
+
+
+		# self.rect.x = self.x
+		# self.rect.y = self.y
+
+		# 

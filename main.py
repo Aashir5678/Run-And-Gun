@@ -20,6 +20,7 @@ pygame.mixer.init()
 
 
 
+
 def main():
 	
 	run = True
@@ -28,7 +29,7 @@ def main():
 	# Load assets
 
 
-	still_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
+	still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
 	hurt_textures, death_textures = load_player_hurt_assets()
 	single_shot_sfx, reload_sfx = load_sfx()
 
@@ -36,7 +37,7 @@ def main():
 	gun_channel = pygame.mixer.Channel(0)
 	music_channel = pygame.mixer.Channel(1)
 
-	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
+	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, sitting_shooting_textures=sitting_shoot, lying_player_texture=lying_player_texture, sitting_player_texture=sitting_player_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
 
 	health_bar = Bar(screen, (20, 40), HEALTH_RED)
 	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW)
@@ -52,6 +53,8 @@ def main():
 
 
 	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
+
+	fps_font = pygame.font.SysFont('Arial', 30)
 
 
 	seed = randint(0, 999)
@@ -71,6 +74,8 @@ def main():
 	while run:
 		# if not music_channel.get_busy():
 		# 	music_channel.queue(song)
+		# print (int(player.blocks_travelled))
+		player.blocks_travelled += scroll_speed / BLOCK_SIZE
 
 
 		ticks += 1
@@ -100,46 +105,14 @@ def main():
 				gun_channel.play(reload_sfx)
 
 
-		for i, bullet in enumerate(bullets):
-			if bullet.x > SCREEN_WIDTH or bullet.x < 0 or bullet.y > SCREEN_HEIGHT or bullet.y < 0:
-				bullets.pop(i)
-				break
 
-			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
-				player.hurt = True
-
-				if bullet.y <= (player.y + (player.get_height() // 4)):
-					print ("headshot")
-					player.health -= HEAD_SHOT_DAMAGE
-
-				elif bullet.y <= (player.y + (player.get_height() // 2)):
-					print ("body shot")
-					player.health -= BODY_SHOT_DAMAGE
-
-				else:
-					print ("leg shot")
-					player.health -= LEG_SHOT_DAMAGE
-
-				bullets.remove(bullet)
-
-				# pygame.time.delay(2000)
-
-			for enemy in enemies:
-				if bullet.hit_entity(enemy) and bullet.is_player_bullet():
-					enemies.remove(enemy)
-					bullets.remove(bullet)
-					break
-
-			bullet.update()
-			bullet.draw()
-
-
-		for block in blocks:
+		for index, block in enumerate(blocks):
 			
 			if player.health > 0:
 				block.draw()
 
 			block.x -= scroll_speed
+			block.block_rect.x = block.x
 
 			if block.x < -BLOCK_SIZE * 3 and block in blocks:
 				blocks.remove(block)
@@ -186,6 +159,31 @@ def main():
 						enemy.animation_stages["run"] = 0
 
 
+
+		for i, bullet in enumerate(bullets):
+			if bullet.x > SCREEN_WIDTH or bullet.x < 0 or bullet.y > SCREEN_HEIGHT or bullet.y < 0:
+				bullets.pop(i)
+				break
+
+			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
+				player.hurt = True
+				player.take_damage(bullet)
+				bullets.remove(bullet)
+
+
+			for enemy in enemies:
+				if bullet.hit_entity(enemy) and bullet.is_player_bullet():
+					# enemies.remove(enemy)
+
+					enemy.take_damage(bullet)
+
+					if enemy.health <= 0:
+						enemies.remove(enemy)
+					bullets.remove(bullet)
+					break
+
+			bullet.update()
+			bullet.draw()
 		
 
 
@@ -193,10 +191,17 @@ def main():
 
 		mx, my = pygame.mouse.get_pos()
 		
-		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % SHOOTING_COOLDOWN == 0 and player.ammo > 0 and not player.jumping:
+		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % SHOOTING_COOLDOWN == 0 and player.ammo > 0 and not player.jumping and not player.hurt:
 
-			player.aiming = True
-			player.aimed_shot = True
+			if player.sitting:
+				player.sitting_shot = True
+
+			elif player.lying:
+				pass
+
+			else:
+				player.aiming = True
+				player.aimed_shot = True
 
 			
 			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 4)), bullet_texture, flip=player.flipped)
@@ -224,7 +229,7 @@ def main():
 
 			
 
-		elif pygame.mouse.get_pressed()[2] and not player.jumping:
+		elif pygame.mouse.get_pressed()[2] and not player.jumping and not player.hurt:
 			player.aiming = True
 
 			if mx < player.x and not player.flipped:
@@ -237,6 +242,8 @@ def main():
 			for enemy in enemies:
 				enemy.aiming = True
 				enemy.aimed_shot = True
+				enemy.vel_x = 0
+				enemy.shoot_dist = enemy.x
 
 
 
@@ -294,16 +301,19 @@ def main():
 			player.health = 1.0
 			player.stamina = 1.0
 
-		# if player.health <= 0:
-		# 	game_over(screen, player)
-		# 	screen.fill(WHITE)
-		# 	main()
+		
+		odds = int(ENEMY_SPAWN_RATE - player.blocks_travelled / 100)
 
-		if random.randint(0, ENEMY_SPAWN_RATE) == 0 and surface_blocks:
+
+		if odds < MAX_SPAWN_RATE:
+			odds = MAX_SPAWN_RATE
+
+		if random.randint(0, odds) == 0 and surface_blocks and len(enemies) < MAX_ENEMIES_AT_ONCE:
 			random_block = choice(surface_blocks)
-			print (random_block)
 			
-			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST:
+			
+			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
+				print (f"Distance to enemy: {str(random_block.x - player.x)}")
 				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, aimed_shooting_textures=enemy_standing_shooting_textures))
 
 
@@ -311,6 +321,7 @@ def main():
 		if player.health <= 0:
 			enemies.clear()
 			bullets.clear()
+			player.ammo = ROUNDS_IN_MAG
 
 		handle_player_stats(player)
 
@@ -325,7 +336,9 @@ def main():
 
 
 		for enemy in enemies:
-			enemy.change_movement_texture(ticks)
+			enemy.x -= scroll_speed
+			# print (f"{enemy.direction} and {str(enemy.flipped)}")
+			enemy.change_movement_texture(player, ticks)
 
 
 			bullet = enemy.follow_player(player, ticks, bullet_texture)
@@ -338,6 +351,8 @@ def main():
 
 		player.update()
 		player.draw()
+
+
 
 		pygame.display.flip()
 		pygame.display.update()
@@ -369,8 +384,10 @@ def draw_ammo(screen, ammo, bullet_texture, empty_bullet_texture):
 
 
 
+
+
 def handle_movement(keys, player, ticks):
-	if keys[pygame.K_d]:
+	if keys[pygame.K_d] and not player.sitting and not player.lying:
 		if not player.running:
 			player.vel_x = WALKING_VEL
 
@@ -380,7 +397,7 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 
-	elif keys[pygame.K_a]:
+	elif keys[pygame.K_a] and not player.sitting and not player.lying:
 		if not player.running:
 			player.vel_x = -WALKING_VEL
 
@@ -390,9 +407,33 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 
-	elif keys[pygame.K_q] and ticks % 5 == 0:
-		player.hurt = True
-		player.health -= 0.1
+	elif keys[pygame.K_c] and ticks % 10 == 0:
+		player.lying = False
+		if not player.sitting:
+			player.sitting = True
+			player.y += player.get_height() // 2
+
+		else:
+			# player.y -= player.get_height() 
+			player.sitting = False
+
+		return
+
+	elif keys[pygame.K_x] and ticks % 10 == 0 and (player.sitting or player.lying):
+		player.sitting = False
+		if not player.lying:
+			player.lying = True
+			player.y += player.get_height()
+
+
+		else:
+			player.lying = False
+
+
+		return
+	# elif keys[pygame.K_q] and ticks % 5 == 0:
+	# 	player.hurt = True
+	# 	player.health -= 0.1
 
 	if keys[pygame.K_SPACE] and not player.jumping and player.current_texture not in player.flip_textures and player.stamina >= STAMINA_TO_FLIP:
 
@@ -402,11 +443,14 @@ def handle_movement(keys, player, ticks):
 		player.stamina -= STAMINA_TO_FLIP
 		player.vel_y += -BLOCK_SIZE * JUMP_CONSTANT
 		player.jumping = True
+		player.lying = False
+		player.sitting = False
 		player.update()
 
 	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15:
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
+		player.sitting = False
 
 		player.running = True
 
@@ -416,6 +460,7 @@ def handle_movement(keys, player, ticks):
 
 	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG:
 		player.running = False
+		# player.sitting = False
 		player.standing_reload = True
 
 		

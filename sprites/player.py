@@ -6,7 +6,7 @@ import math
 pygame.init()
 
 class Player:
-	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None):
+	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, sitting_shooting_textures=None, lying_player_texture=None, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None, sitting_player_texture=None):
 		self.screen = screen
 		self.x = x
 		self.y = y
@@ -24,6 +24,9 @@ class Player:
 		self.hurt_textures = hurt_textures
 		self.death_textures = death_textures
 		self.standing_reload_textures = standing_reload_textures
+		self.sitting_player_texture = sitting_player_texture
+		self.lying_player_texture = lying_player_texture
+		self.sitting_shooting_textures = sitting_shooting_textures
 
 		self.stamina = 1.0
 		self.health = 1.0
@@ -37,22 +40,19 @@ class Player:
 		self.aimed_shot = False
 		self.running = False
 		self.standing_reload = False
+		self.sitting = False
+		self.lying = False
+		self.sitting_shot = False
 
 		self.in_animation = False
-		self.direction = "right"
 		self.ammo = ROUNDS_IN_MAG
+
+		self.blocks_travelled = 1
 
 
 		# Indicies representing which stage of the movement animations to play
 
-		# self.walk_index = 0
-		# self.run_index = 0
-		# self.flip_index = 0
-		# self.aimed_shot_index = 0
-		# self.hurt_index = -1
-		# self.death_index = -1
-
-		self.animation_stages = {"walk": 0, "run": 0, "flip": 0, "aimed_shot": 0, "noaim_shot": 0, "standing_reload": 0, "hurt": 0, "death": 0}
+		self.animation_stages = {"walk": 0, "run": 0, "flip": 0, "aimed_shot": 0, "noaim_shot": 0, "standing_reload": 0, "hurt": 0, "death": 0, "sitting_shot": 0}
 
 		
 		self.current_texture = self.still_texture
@@ -121,6 +121,7 @@ class Player:
 			return
 
 
+
 		# Reloading
 
 		if self.standing_reload and ticks % STANDING_RELOAD_ANIMATION_SPEED == 0:
@@ -144,9 +145,12 @@ class Player:
 		elif self.standing_reload:
 			return
 
+
 		# No aim shooting
 
 		if self.noaim_shooting and ticks % NOAIM_SHOOT_ANIMATION_SPEED == 0:
+			self.sitting = False
+			self.lying = False
 			self.current_texture = self.noaim_shooting_textures[self.animation_stages["noaim_shot"]]
 
 			self.animation_stages["noaim_shot"] += 1
@@ -154,11 +158,11 @@ class Player:
 
 			if self.flipped:
 				self.x += RECOIL * 10
+				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 
 			else:
 				self.x -= RECOIL * 10
 
-			self.rect.x = self.x
 
 			if self.animation_stages["noaim_shot"] >= len(self.noaim_shooting_textures):
 				self.noaim_shooting = False
@@ -166,11 +170,42 @@ class Player:
 
 
 
-			if self.flipped:
-				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+			return
 
+
+
+
+		# Sitting / lying
+
+		if self.sitting or self.lying:
+			if self.sitting:
+				self.current_texture = self.sitting_player_texture
+
+				if self.sitting_shot and ticks % SHOOT_ANIMATION_SPEED == 0:
+					self.current_texture = self.sitting_shooting_textures[self.animation_stages["sitting_shot"]]
+
+					self.animation_stages["sitting_shot"] += 1
+
+					if self.flipped:
+						self.x += RECOIL * 2
+						self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+
+					else:
+						self.x -= RECOIL * 2
+
+					if self.animation_stages["sitting_shot"] >= len(self.sitting_shooting_textures):
+						self.animation_stages["sitting_shot"] = 0
+						self.sitting_shot = False
+
+
+			else:
+				self.current_texture = self.lying_player_texture
+
+			if self.flipped:
+				self.current_texture = pygame.transform.flip(self.sitting_player_texture, True, False)
 
 			return
+
 
 
 		# Aiming
@@ -201,9 +236,8 @@ class Player:
 
 
 			if self.flipped:
-				# print ("flipping enemy")
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
-				# self.flipped = False
+				
 
 
 			return
@@ -227,10 +261,8 @@ class Player:
 				# if isinstance(self, Enemy):
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 				self.flipped = True
-				self.direction = "left"
 
 			else:
-				self.direction = "right"
 				self.flipped = False
 
 
@@ -241,13 +273,6 @@ class Player:
 
 			if self.flipped:
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
-				# if self.direction == "right":
-				# 	self.direction = "left"
-
-				# else:
-				# 	self.direction = "right"
-
-
 
 		# Running
 
@@ -264,10 +289,8 @@ class Player:
 			if self.vel_x < 0:
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 				self.flipped = True
-				self.direction = "left"
 
 			else:
-				self.direction = "right"
 				self.flipped = False
 
 
@@ -284,18 +307,50 @@ class Player:
 
 			if self.flipped:
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
-				if self.direction == "right":
-					self.direction = "left"
-
-				else:
-					self.direction = "right"
-
 
 
 		self.rect = self.current_texture.get_rect()
 
 		self.rect.x = self.x
 		self.rect.y = self.y
+
+	def take_damage(self, bullet):
+		if not self.sitting and not self.lying:
+			if bullet.y <= (self.y + (self.get_height() // 4)):
+				print ("headshot")
+				self.health -= HEAD_SHOT_DAMAGE
+
+			elif bullet.y <= (self.y + (self.get_height() // 2)):
+				print ("body shot")
+				self.health -= BODY_SHOT_DAMAGE
+
+			else:
+				print ("leg shot")
+				self.health -= LEG_SHOT_DAMAGE
+
+
+
+		elif self.sitting:
+			if bullet.y <= (self.y + (self.get_height() // 3)):
+				print ("headshot")
+				self.health -= HEAD_SHOT_DAMAGE
+
+			else:
+				print ("body shot")
+				self.health -= BODY_SHOT_DAMAGE
+
+
+
+		else:
+			if bullet.y <= (self.y + (self.get_height() // 2)):
+				print ("headshot")
+				self.health -= HEAD_SHOT_DAMAGE
+
+			else:
+				print ("body shot")
+				self.health -= BODY_SHOT_DAMAGE
+
+
 
 
 
@@ -328,6 +383,9 @@ class Player:
 		self.x += self.vel_x
 
 		self.y += self.vel_y
+
+		if self.vel_x != 0:
+			self.blocks_travelled += self.vel_x / BLOCK_SIZE
 
 
 		# print (self.y)
@@ -374,7 +432,7 @@ class Bullet:
 			angle = (round(math.degrees(math.atan(dist_y/dist_x)), 2))
 			# print (angle)
 
-			if abs(angle) <= 20:
+			if abs(angle) <= PLAYER_SHOOT_RANGE or not self.player_bullet:
 				if mx < self.x:
 					self.vel_x =  math.cos(math.radians(angle)) * BULLET_SPEED * -1
 
@@ -408,7 +466,13 @@ class Bullet:
 
 
 	def hit_entity(self, entity):
-		return entity.get_rect().colliderect(self.rect)
+		return entity.get_rect().colliderect(self.rect) or (abs(self.x - entity.x) < self.rect.width and abs(self.y - entity.y) < self.rect.height)
+
+	def get_distance(self, entity):
+		dx = self.x - entity.x
+		dy = self.y - entity.y
+		return math.sqrt((dx ** 2) + (dy ** 2))
 
 	def draw(self):
 		self.screen.blit(self.bullet_img, (self.x, self.y))
+		

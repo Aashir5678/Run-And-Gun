@@ -62,6 +62,9 @@ class Block:
 		self.center_x = self.x + BLOCK_SIZE / 2
 		self.center_y = self.y + BLOCK_SIZE / 2
 
+		self.rect.x = x
+		self.rect.y = y
+
 
 	def distance_from_block(self, block):
 		dist_x = abs(self.center_x - block.center_x)
