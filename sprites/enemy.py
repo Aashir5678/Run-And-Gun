@@ -1,6 +1,6 @@
 from .player import Player, Bullet
 from utilities.constants import *
-from random import randint
+from random import randint, uniform
 import pygame
 
 pygame.init()
@@ -10,6 +10,9 @@ class Enemy(Player):
 	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None):
 		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=None, death_textures=death_textures, standing_reload_textures=None)
 		self.shoot_dist = randint(MIN_ENEMY_SHOOT_DIST, MAX_ENEMY_SHOOT_DIST)
+
+
+		# self.shoot_dist = MAX_ENEMY_SHOOT_DIST
 		self.at_shoot_dist = False
 
 	def follow_player(self, player, ticks, bullet_texture):
@@ -22,27 +25,45 @@ class Enemy(Player):
 
 
 		if (abs(dist_x) >= player.get_width() + self.shoot_dist) or (self.x + self.get_width() + 10 > SCREEN_WIDTH):
-			self.at_shoot_dist = True
-			if dist_x > 0:
+			self.at_shoot_dist = False
+			self.aimed_shot = False
+
+			if dist_x > MAX_ENEMY_SHOOT_DIST:
+				self.vel_x = SPRINTING_VEL
+				self.running = True
+
+			elif abs(dist_x) > MAX_ENEMY_SHOOT_DIST:
+				self.vel_x = -SPRINTING_VEL
+				self.running = True
+
+
+			elif dist_x > 0:
 				self.vel_x = WALKING_VEL
+				self.running = False
 
 			else:
 				self.vel_x = -WALKING_VEL
-			
+				self.running = False
 				# self.flipped = True
 
 		else:
 			self.vel_x = 0
-			self.at_shoot_dist = False
+			self.at_shoot_dist = True
 			self.aiming = True
+			self.running = False
 			self.aimed_shot = True
 
 			if ticks % ENEMY_SHOOTING_COOLDOWN == 0:
 				bullet = Bullet(self.screen, (self.x, self.y + (self.get_height() // 4)), bullet_texture, flip=self.flipped, player_bullet=False)
 
 				
-				innacuarte_x = player.x + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
-				innacuarte_y = player.y + (player.get_height() / 2) + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
+				if not player.jumping and not player.running:
+					innacuarte_x = player.x + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
+					innacuarte_y = player.y + (player.get_height() / 2) + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
+
+				else:
+					innacuarte_x = player.x + uniform(-ENEMY_INNACURACY * 1.5, ENEMY_INNACURACY * 1.5)
+					innacuarte_y = player.y + (player.get_height() / 2) + uniform(-ENEMY_INNACURACY * 1.5, ENEMY_INNACURACY * 1.5)
 
 				valid_bullet = bullet.set_vel(innacuarte_x, innacuarte_y)
 

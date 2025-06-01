@@ -72,6 +72,8 @@ class Player:
 
 		# Death
 		if self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0:
+			self.vel_x = 0
+			self.vel_y = 0
 			self.animation_stages["death"] += 1
 
 
@@ -126,7 +128,6 @@ class Player:
 
 		if self.standing_reload and ticks % STANDING_RELOAD_ANIMATION_SPEED == 0:
 			self.current_texture = self.standing_reload_textures[self.animation_stages["standing_reload"]]
-
 			self.animation_stages["standing_reload"] += 1
 
 			if self.animation_stages["standing_reload"] >= len(self.standing_reload_textures):
@@ -152,7 +153,6 @@ class Player:
 			self.sitting = False
 			self.lying = False
 			self.current_texture = self.noaim_shooting_textures[self.animation_stages["noaim_shot"]]
-
 			self.animation_stages["noaim_shot"] += 1
 
 
@@ -317,37 +317,30 @@ class Player:
 	def take_damage(self, bullet):
 		if not self.sitting and not self.lying:
 			if bullet.y <= (self.y + (self.get_height() // 4)):
-				print ("headshot")
 				self.health -= HEAD_SHOT_DAMAGE
 
 			elif bullet.y <= (self.y + (self.get_height() // 2)):
-				print ("body shot")
 				self.health -= BODY_SHOT_DAMAGE
 
 			else:
-				print ("leg shot")
 				self.health -= LEG_SHOT_DAMAGE
 
 
 
 		elif self.sitting:
 			if bullet.y <= (self.y + (self.get_height() // 3)):
-				print ("headshot")
 				self.health -= HEAD_SHOT_DAMAGE
 
 			else:
-				print ("body shot")
 				self.health -= BODY_SHOT_DAMAGE
 
 
 
 		else:
 			if bullet.y <= (self.y + (self.get_height() // 2)):
-				print ("headshot")
 				self.health -= HEAD_SHOT_DAMAGE
 
 			else:
-				print ("body shot")
 				self.health -= BODY_SHOT_DAMAGE
 
 

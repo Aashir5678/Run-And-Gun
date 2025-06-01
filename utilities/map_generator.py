@@ -90,14 +90,15 @@ class TNT(Block):
 
 
 
-def generate_new_terrain(screen, noise_number, seed, height_factor):
-	start_noise_number = noise_number - (SCREEN_WIDTH // BLOCK_SIZE) # Noise number from first block on the left side of the screen
-	end_noise_number = int(noise_number + (SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE) # Noise number for the block RENDER_DISTANCEx screen width away
 
-	noise_map = generate_noise_map(octaves=OCTAVES, seed=seed, start = start_noise_number, end=end_noise_number)
-	surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, start_x=0, start_n=start_noise_number, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
+def generate_new_terrain(screen, noise_number, seed, height_factor, start_x=0):
+	end_noise_number = int(noise_number + (SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE) # Noise number for the block RENDER_DISTANCE x screen width away
 
-	return surface_blocks, blocks, noise_number
+	noise_map = generate_noise_map(octaves=OCTAVES, seed=seed, start = noise_number, end=end_noise_number)
+	surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, start_x=start_x, start_n=noise_number, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
+
+	return surface_blocks, blocks
+
 
 
 def generate_noise_map(octaves=4, seed=1, start=0, end=0):

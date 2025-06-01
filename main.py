@@ -6,6 +6,7 @@ from utilities.map_generator import *
 from utilities.constants import *
 from utilities.asset_loader import *
 from utilities.stat_bars import Bar
+from utilities.boosts import Boost
 
 
 
@@ -31,6 +32,7 @@ def main():
 
 	still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
 	hurt_textures, death_textures = load_player_hurt_assets()
+	heart_texture = load_boost_textures()
 	single_shot_sfx, reload_sfx = load_sfx()
 
 
@@ -45,16 +47,15 @@ def main():
 	ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(bullet_texture, 90), 3)
 	empty_ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(empty_bullet_texture, 90), 3)
 
-	enemy_standing_texture, enemy_walking_textures, enemy_standing_shooting_textures = load_enemy_assets()
+	enemy_standing_texture, enemy_walking_textures, enemy_running_textures, enemy_standing_shooting_textures = load_enemy_assets()
 	# print (len(enemy_walking_textures))
 	bullets = []
 
 	enemies = []
-
+	health_boosts = []
+	difficulty = 0
 
 	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
-
-	fps_font = pygame.font.SysFont('Arial', 30)
 
 
 	seed = randint(-9999, 9999)
@@ -62,8 +63,10 @@ def main():
 	height_factor = 0.5
 	scroll_speed = 0
 
-	noise_map = generate_noise_map(octaves=OCTAVES, seed=seed, start = noise_num, end=int((SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE))
-	surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
+	# noise_map = generate_noise_map(octaves=OCTAVES, seed=seed, start = noise_num, end=int((SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE))
+	# surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
+
+	surface_blocks, blocks = generate_new_terrain(screen, noise_num, seed, height_factor)
 	clock = pygame.time.Clock()
 	ticks = 0
 
@@ -108,6 +111,14 @@ def main():
 
 
 
+		for block in surface_blocks:
+			spawn_health_boost = random.randint(0, HEALTH_BOOST_SPAWN_RATE + int(difficulty))
+
+			if spawn_health_boost == 0 and player.health < 1.0 and len(health_boosts) < 5:
+				health = Boost(screen, block.x, block.y - (heart_texture.get_height() * 4 / 3), heart_texture)
+				health_boosts.append(health)
+
+
 		for index, block in enumerate(blocks):
 			
 			if player.health > 0:
@@ -116,8 +127,11 @@ def main():
 			block.x -= scroll_speed
 			block.block_rect.x = block.x
 
-			if block.x < -SCREEN_WIDTH * RENDER_DISTANCE and block in blocks:
+			if block.x < -SPRINTING_VEL * BLOCK_SIZE:
 				blocks.remove(block)
+
+				if block in surface_blocks:
+					surface_blocks.remove(block)
 
 
 			# Prevents player from sinking in to the floor
@@ -161,7 +175,6 @@ def main():
 						enemy.animation_stages["run"] = 0
 
 
-
 		for i, bullet in enumerate(bullets):
 			if bullet.x > SCREEN_WIDTH or bullet.x < 0 or bullet.y > SCREEN_HEIGHT or bullet.y < 0:
 				bullets.pop(i)
@@ -188,7 +201,7 @@ def main():
 
 
 				# Enemies advance on player if the player is camping behind a hill or if enemy has an ineffective shooting spot
-				elif not bullet.is_player_bullet() and bullet.get_distance(player) > player.get_height() and enemy.at_shoot_dist:
+				elif not bullet.is_player_bullet() and bullet.get_distance(player) > player.get_height() / 2 and enemy.at_shoot_dist:
 					enemy.shoot_dist -= 5
 
 			bullet.update()
@@ -248,6 +261,8 @@ def main():
 				player.flipped = False
 
 
+
+			# Make enemies in range start shooting if player takes aim
 			for enemy in enemies:
 				if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
 					enemy.aiming = True
@@ -283,6 +298,15 @@ def main():
 			else:
 				player.noaim_shooting = False
 
+
+			# Make enemies in range start shooting if player starts spraying
+			for enemy in enemies:
+				if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
+					enemy.aiming = True
+					enemy.aimed_shot = True
+					enemy.vel_x = 0
+					enemy.shoot_dist = enemy.x
+
 		else:
 			player.aiming = False
 			player.noaim_shooting = False
@@ -291,16 +315,25 @@ def main():
 		player.change_movement_texture(ticks)
 
 
-		if blocks[-1].x <= SCREEN_WIDTH:
-			surface_blocks, blocks, noise_number = generate_new_terrain(screen, noise_number, seed, height_factor)
+		if surface_blocks[-1].x <= SCREEN_WIDTH:
+			noise_num += int((SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE)
+			new_suface_blocks, new_blocks = generate_new_terrain(screen, noise_num, seed, height_factor, start_x=SCREEN_WIDTH)
+
+			surface_blocks.extend(new_suface_blocks)
+			blocks.extend(new_blocks)
 
 		if player.x > SCREEN_WIDTH // 4 and player.vel_x > 0:
 			scroll_speed = player.vel_x
 			player.vel_x = 0
 
-		elif player.x < SCREEN_WIDTH // 4 and player.vel_x < 0:
-			scroll_speed = player.vel_x
-			player.vel_x = 0
+		elif player.x < SCREEN_WIDTH // 4 and player.vel_x < 0 or player.in_animation:
+			scroll_speed = 0 # player.vel_x
+			# player.vel_x = 0
+
+			if player.x < 0:
+				player.vel_x = 0
+				player.running = False
+				player.x = 0
 
 		else:
 			scroll_speed = 0
@@ -311,8 +344,14 @@ def main():
 			player.health = 1.0
 			player.stamina = 1.0
 
-		
-		odds = int(ENEMY_SPAWN_RATE - player.blocks_travelled / 100)
+
+		# Difficulty increases every BLOCKS_TILL_DIFFICULTY_INCREASE blocks travelled
+
+		if player.blocks_travelled / BLOCKS_TILL_DIFFICULTY_INCREASE > difficulty:
+			difficulty = player.blocks_travelled / BLOCKS_TILL_DIFFICULTY_INCREASE
+
+
+		odds = int(ENEMY_SPAWN_RATE - difficulty)
 
 
 		if odds < MAX_SPAWN_RATE:
@@ -324,13 +363,15 @@ def main():
 			
 			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
 				print (f"Distance to enemy: {str(random_block.x - player.x)}")
-				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, aimed_shooting_textures=enemy_standing_shooting_textures))
+				print (f"Difficulty: {str(round(difficulty, 2))}")
+				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures))
 
 
 
 		if player.health <= 0:
 			enemies.clear()
 			bullets.clear()
+			health_boosts.clear()
 			player.ammo = ROUNDS_IN_MAG
 
 		handle_player_stats(player)
@@ -356,11 +397,27 @@ def main():
 			if bullet is not None:
 				bullets.append(bullet)
 
+
+			
 			enemy.update()
 			enemy.draw()
 
+
 		player.update()
 		player.draw()
+
+		for health_boost in health_boosts:
+			if health_boost.hit_player(player):
+				player.health += HEALTH_BOOST
+				if player.health > 1.0:
+					player.health = 1.0
+
+				health_boosts.remove(health_boost)
+
+				continue
+
+			health_boost.update(scroll_speed)
+			health_boost.draw()
 
 
 
@@ -417,8 +474,9 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 
-	elif keys[pygame.K_c]:
+	elif keys[pygame.K_c] and not player.jumping:
 		player.lying = False
+
 		if not player.sitting:
 			player.sitting = True
 			player.y += player.get_height() // 2
@@ -433,8 +491,9 @@ def handle_movement(keys, player, ticks):
 
 		return
 
-	elif keys[pygame.K_x] and (player.sitting or player.lying) and not player.aiming:
+	elif keys[pygame.K_x] and (player.sitting or player.lying) and not player.aiming and not player.jumping:
 		player.sitting = False
+
 		if not player.lying:
 			player.lying = True
 			player.y += player.get_height()
@@ -453,7 +512,6 @@ def handle_movement(keys, player, ticks):
 	# 	player.health -= 0.1
 
 	if keys[pygame.K_SPACE] and not player.jumping and player.current_texture not in player.flip_textures and player.stamina >= STAMINA_TO_FLIP:
-
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 

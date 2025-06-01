@@ -119,6 +119,8 @@ def load_enemy_asset(index, type_="walking"):
 	elif type_ == "standing_shoot":
 		path = f"Assets//enemy_standing_shoot//standing_shoot{str(index)}.png"
 
+	elif type_ == "running":
+		path = f"Assets//enemy_run//enemy_run{str(index)}.png"
 
 	try:
 		asset = pygame.image.load(path)
@@ -136,13 +138,21 @@ def load_enemy_assets():
 	enemy_standing = pygame.transform.scale_by(enemy_standing, 1.5).convert_alpha()
 
 	walking = []
+	running = []
 	standing_shoot = []
 
 	for i in range(1, 8):
+		running.append(load_enemy_asset(i, type_="running"))
 		walking.append(load_enemy_asset(i, type_="walking"))
 
 		if i <= 4:
 			standing_shoot.append(load_enemy_asset(i, type_="standing_shoot"))
 
 
-	return enemy_standing, walking, standing_shoot
+	return enemy_standing, walking, running, standing_shoot
+
+
+def load_boost_textures():
+	heart_texture = pygame.transform.scale_by(pygame.image.load("Assets//boosts//heart.png"), 40/16).convert_alpha()
+
+	return heart_texture
