@@ -105,6 +105,7 @@ def load_player_hurt_assets():
 
 
 def load_sfx():
+	pygame.mixer.init()
 	single_shot_sfx = pygame.mixer.Sound("Assets//sfx//single_shot.wav")
 	reload_sfx = pygame.mixer.Sound("Assets//sfx//reload.mp3")
 

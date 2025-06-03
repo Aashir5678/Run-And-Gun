@@ -43,6 +43,7 @@ class Player:
 		self.sitting = False
 		self.lying = False
 		self.sitting_shot = False
+		self.dead = False
 
 		self.in_animation = False
 		self.ammo = ROUNDS_IN_MAG
@@ -78,11 +79,13 @@ class Player:
 
 
 			if self.animation_stages["death"] == len(self.death_textures):
-				self.health = 1.0
-				self.stamina = 1.0
+				# self.health = 1.0
+				# self.stamina = 1.0
 				self.animation_stages["death"] = 0
+				self.dead = True
 
-				pygame.time.delay(2000)
+				pygame.time.delay(5000)
+
 
 			else:
 				self.current_texture = self.death_textures[self.animation_stages["death"]]

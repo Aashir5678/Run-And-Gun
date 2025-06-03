@@ -7,6 +7,7 @@ from utilities.constants import *
 from utilities.asset_loader import *
 from utilities.stat_bars import Bar
 from utilities.boosts import Boost
+from title_screen import title_screen
 
 
 
@@ -22,7 +23,7 @@ pygame.mixer.init()
 
 
 
-def main():
+def main(seed=None):
 	
 	run = True
 	screen = pygame.display.set_mode(SCREEN_SIZE)
@@ -39,7 +40,7 @@ def main():
 	gun_channel = pygame.mixer.Channel(0)
 	music_channel = pygame.mixer.Channel(1)
 
-	player = Player(screen, 0, 0, still_player_texture, walking_textures, aim_texture, sitting_shooting_textures=sitting_shoot, lying_player_texture=lying_player_texture, sitting_player_texture=sitting_player_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
+	
 
 	health_bar = Bar(screen, (20, 40), HEALTH_RED)
 	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW)
@@ -58,17 +59,17 @@ def main():
 	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
 
 
-	seed = randint(-9999, 9999)
+	if seed is None:
+		seed = randint(-9999, 9999)
+
 	noise_num = 0
-	height_factor = 0.5
 	scroll_speed = 0
 
-	# noise_map = generate_noise_map(octaves=OCTAVES, seed=seed, start = noise_num, end=int((SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE))
-	# surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
-
-	surface_blocks, blocks = generate_new_terrain(screen, noise_num, seed, height_factor)
+	surface_blocks, blocks = generate_new_terrain(screen, noise_num, seed, HEIGHT_FACTOR)
 	clock = pygame.time.Clock()
 	ticks = 0
+
+	player = Player(screen, surface_blocks[0].y - still_player_texture.get_height(), 0, still_player_texture, walking_textures, aim_texture, sitting_shooting_textures=sitting_shoot, lying_player_texture=lying_player_texture, sitting_player_texture=sitting_player_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
 
 	print (f"Seed: {str(seed)}")
 
@@ -94,12 +95,6 @@ def main():
 			if event.type == pygame.QUIT:
 				run = False
 				break
-
-
-		# if pygame.mouse.get_pressed()[0]:
-		# 	seed = randint(0, 999)
-		# 	noise_map = generate_noise_map(octaves=OCTAVES, seed=seed, start = noise_num, end=int((SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE))
-		# 	surface_blocks, blocks, noise_number = get_blocks(screen, noise_map, surface_color=SURFACE_GROUND_COLOR, block_color=GROUND_COLOR, height_factor=height_factor)
 
 
 		keys = pygame.key.get_pressed()
@@ -267,6 +262,7 @@ def main():
 				if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
 					enemy.aiming = True
 					enemy.aimed_shot = True
+					enemy.at_shoot_dist = True
 					enemy.vel_x = 0
 					enemy.shoot_dist = enemy.x
 
@@ -304,6 +300,7 @@ def main():
 				if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
 					enemy.aiming = True
 					enemy.aimed_shot = True
+					enemy.at_shoot_dist = True
 					enemy.vel_x = 0
 					enemy.shoot_dist = enemy.x
 
@@ -317,7 +314,7 @@ def main():
 
 		if surface_blocks[-1].x <= SCREEN_WIDTH:
 			noise_num += int((SCREEN_WIDTH // BLOCK_SIZE) * RENDER_DISTANCE)
-			new_suface_blocks, new_blocks = generate_new_terrain(screen, noise_num, seed, height_factor, start_x=SCREEN_WIDTH)
+			new_suface_blocks, new_blocks = generate_new_terrain(screen, noise_num, seed, HEIGHT_FACTOR, start_x=SCREEN_WIDTH)
 
 			surface_blocks.extend(new_suface_blocks)
 			blocks.extend(new_blocks)
@@ -374,6 +371,10 @@ def main():
 			health_boosts.clear()
 			player.ammo = ROUNDS_IN_MAG
 
+			if player.dead:
+				return True
+
+
 		handle_player_stats(player)
 
 		health_bar.set_value(player.health)
@@ -426,7 +427,8 @@ def main():
 
 
 	print (sum(fps_sum) / len(fps_sum))
-	pygame.quit()
+	# pygame.quit()
+	return False
 
 
 
@@ -583,4 +585,17 @@ def draw_background(screen, player):
 
 
 if __name__ == "__main__":
-	main()
+
+	seed, title_run = title_screen()
+	main_run = True
+
+	while title_run and main_run:
+		main_run = main(seed=seed)
+
+		if not main_run:
+			break
+
+		seed, title_run = title_screen()
+
+	pygame.quit()
+	quit()
