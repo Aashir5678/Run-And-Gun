@@ -33,7 +33,7 @@ def main(seed=None):
 
 	still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
 	hurt_textures, death_textures = load_player_hurt_assets()
-	heart_texture = load_boost_textures()
+	heart_texture, stamina_texture = load_boost_textures()
 	single_shot_sfx, reload_sfx = load_sfx()
 
 
@@ -53,7 +53,10 @@ def main(seed=None):
 	bullets = []
 
 	enemies = []
-	health_boosts = []
+	# health_boosts = []
+	# stamina_boosts = []
+
+	boosts = []
 	difficulty = 0
 
 	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
@@ -107,11 +110,16 @@ def main(seed=None):
 
 
 		for block in surface_blocks:
-			spawn_health_boost = random.randint(0, HEALTH_BOOST_SPAWN_RATE + int(difficulty))
+			spawn_health_boost = random.randint(0, HEALTH_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
+			spawn_stamina_boost = random.randint(0, STAMINA_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
 
-			if spawn_health_boost == 0 and player.health < 1.0 and len(health_boosts) < 5:
-				health = Boost(screen, block.x, block.y - (heart_texture.get_height() * 4 / 3), heart_texture)
-				health_boosts.append(health)
+			if spawn_health_boost == 0 and player.health < 1.0 and len(boosts) < 10:
+				health = Boost(screen, block.x, block.y - (heart_texture.get_height() * 4 / 3), heart_texture, "health")
+				boosts.append(health)
+
+			if spawn_stamina_boost == 0 and player.stamina < 1.0 and len(boosts) < 10:
+				stamina = Boost(screen, block.x, block.y - (stamina_texture.get_height() * 4 / 3), stamina_texture, "stamina")
+				boosts.append(stamina)
 
 
 		for index, block in enumerate(blocks):
@@ -243,6 +251,17 @@ def main(seed=None):
 			else:
 				player.aimed_shot = False
 
+		elif  pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and player.ammo > 0 and not player.jumping and not player.hurt:
+			if player.sitting:
+				player.sitting_shot = True
+
+			elif player.lying:
+				pass
+
+			else:
+				player.aiming = True
+				player.aimed_shot = True
+
 
 			
 
@@ -270,6 +289,7 @@ def main(seed=None):
 
 		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping and ticks % SHOOTING_COOLDOWN == 0 :
 			player.noaim_shooting = True
+			player.sitting = False
 			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 2)), bullet_texture, flip=player.flipped)
 
 			mx += randint(-SPRAY_INNACURACY, SPRAY_INNACURACY)
@@ -304,12 +324,15 @@ def main(seed=None):
 					enemy.vel_x = 0
 					enemy.shoot_dist = enemy.x
 
+		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping:
+			player.noaim_shooting = True
+
 		else:
 			player.aiming = False
 			player.noaim_shooting = False
 			player.aimed_shot = False
 
-		player.change_movement_texture(ticks)
+		player.change_movement_texture(ticks, scroll_speed=scroll_speed)
 
 
 		if surface_blocks[-1].x <= SCREEN_WIDTH:
@@ -319,9 +342,13 @@ def main(seed=None):
 			surface_blocks.extend(new_suface_blocks)
 			blocks.extend(new_blocks)
 
-		if player.x > SCREEN_WIDTH // 4 and player.vel_x > 0:
+		if player.x > SCREEN_WIDTH // 4 and (player.vel_x > 0 or player.sliding_vel > 0):
 			scroll_speed = player.vel_x
-			player.vel_x = 0
+			if not player.sliding:
+				player.vel_x = 0
+
+			else:
+				player.vel_x = 0
 
 		elif player.x < SCREEN_WIDTH // 4 and player.vel_x < 0 or player.in_animation:
 			scroll_speed = 0 # player.vel_x
@@ -359,7 +386,7 @@ def main(seed=None):
 			
 			
 			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
-				print (f"Distance to enemy: {str(random_block.x - player.x)}")
+				print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
 				print (f"Difficulty: {str(round(difficulty, 2))}")
 				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures))
 
@@ -368,7 +395,7 @@ def main(seed=None):
 		if player.health <= 0:
 			enemies.clear()
 			bullets.clear()
-			health_boosts.clear()
+			boosts.clear()
 			player.ammo = ROUNDS_IN_MAG
 
 			if player.dead:
@@ -407,18 +434,26 @@ def main(seed=None):
 		player.update()
 		player.draw()
 
-		for health_boost in health_boosts:
-			if health_boost.hit_player(player):
+		for boost in boosts:
+			if boost.hit_player(player) and boost.type == "health":
 				player.health += HEALTH_BOOST
 				if player.health > 1.0:
 					player.health = 1.0
 
-				health_boosts.remove(health_boost)
+				boosts.remove(boost)
 
 				continue
 
-			health_boost.update(scroll_speed)
-			health_boost.draw()
+			elif boost.hit_player(player) and boost.type == "stamina":
+				player.stamina += STAMINA_BOOST
+
+				if player.stamina > 1.0:
+					player.stamina = 1.0
+
+				boosts.remove(boost)
+
+			boost.update(scroll_speed)
+			boost.draw()
 
 
 
@@ -456,6 +491,7 @@ def draw_ammo(screen, ammo, bullet_texture, empty_bullet_texture):
 
 
 def handle_movement(keys, player, ticks):
+	# print (player.running)
 	if keys[pygame.K_d] and not player.sitting and not player.lying and not player.aiming:
 		if not player.running:
 			player.vel_x = WALKING_VEL
@@ -479,11 +515,22 @@ def handle_movement(keys, player, ticks):
 	elif keys[pygame.K_c] and not player.jumping:
 		player.lying = False
 
-		if not player.sitting:
+		if keys[pygame.K_LSHIFT] and player.stamina >= 0.15 and not player.sliding and not player.sitting:
 			player.sitting = True
+			player.sliding = True
+			player.vel_x = SPRINTING_VEL
 			player.y += player.get_height() // 2
 
+			player.stamina -= STAMINA_TO_SLIDE
 
+		elif not player.sitting:
+			player.sitting = True
+			player.y += player.get_height() // 2
+			player.slidng = False
+
+		elif not player.sliding:
+			player.sliding = False
+			player.vel_x = 0
 
 		# else:
 		# 	# player.y -= player.get_height() 
@@ -506,8 +553,13 @@ def handle_movement(keys, player, ticks):
 
 
 	else:
+
+		if not player.sitting:
+			player.sliding = False
+
 		player.sitting = False
 		player.lying = False
+
 
 	# elif keys[pygame.K_q] and ticks % 5 == 0:
 	# 	player.hurt = True
@@ -526,7 +578,7 @@ def handle_movement(keys, player, ticks):
 		player.sitting = False
 		player.update()
 
-	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15:
+	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15 and not player.sliding and abs(player.vel_x) > 0:
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 		player.sitting = False
@@ -535,7 +587,7 @@ def handle_movement(keys, player, ticks):
 
 		player.running = True
 
-	else:
+	elif not player.sitting:
 		player.running = False
 
 

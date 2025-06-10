@@ -2,7 +2,7 @@ from .constants import *
 
 
 class Boost:
-	def __init__(self, screen, x, y, image):
+	def __init__(self, screen, x, y, image, type_):
 		self.screen = screen
 		self.x = x
 		self.start_y = y
@@ -10,6 +10,8 @@ class Boost:
 		self.y = self.start_y
 		self.image = image
 
+		self.type = type_
+		
 		self.vel_y = BOOST_FLOAT_SPEED
 
 		self.rect = self.image.get_rect()

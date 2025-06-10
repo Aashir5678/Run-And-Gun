@@ -155,5 +155,7 @@ def load_enemy_assets():
 
 def load_boost_textures():
 	heart_texture = pygame.transform.scale_by(pygame.image.load("Assets//boosts//heart.png"), 40/16).convert_alpha()
+	stamina_texture = pygame.transform.scale_by(pygame.image.load("Assets//boosts//stamina.png"), 40/16).convert_alpha()
 
-	return heart_texture
+
+	return heart_texture, stamina_texture

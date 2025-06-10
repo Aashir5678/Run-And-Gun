@@ -11,8 +11,10 @@ class Player:
 		self.x = x
 		self.y = y
 		self.vel_x = 0
+		self.sliding_vel = 0
 		self.vel_y = 0
 		self.acc_y = GRAVITY
+		self.acc_x = 0
 
 		self.still_texture = still_texture
 		self.walking_textures = walking_textures
@@ -44,6 +46,7 @@ class Player:
 		self.lying = False
 		self.sitting_shot = False
 		self.dead = False
+		self.sliding = False
 
 		self.in_animation = False
 		self.ammo = ROUNDS_IN_MAG
@@ -69,7 +72,7 @@ class Player:
 		return self.rect
 
 
-	def change_movement_texture(self, ticks):
+	def change_movement_texture(self, ticks, scroll_speed=None):
 
 		# Death
 		if self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0:
@@ -119,6 +122,9 @@ class Player:
 			if self.flipped:
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 
+
+			if self.sliding:
+				self.handle_slide()
 
 			return
 
@@ -184,6 +190,9 @@ class Player:
 			if self.sitting:
 				self.current_texture = self.sitting_player_texture
 
+				if self.sliding:
+					self.handle_slide(scroll_speed=scroll_speed)
+
 				if self.sitting_shot and ticks % SHOOT_ANIMATION_SPEED == 0:
 					self.current_texture = self.sitting_shooting_textures[self.animation_stages["sitting_shot"]]
 
@@ -199,6 +208,7 @@ class Player:
 					if self.animation_stages["sitting_shot"] >= len(self.sitting_shooting_textures):
 						self.animation_stages["sitting_shot"] = 0
 						self.sitting_shot = False
+
 
 
 			else:
@@ -347,6 +357,29 @@ class Player:
 				self.health -= BODY_SHOT_DAMAGE
 
 
+	def handle_slide(self, scroll_speed=None):
+		# self.x += self.sliding_vel
+		# print (self.vel_x)
+
+		if self.vel_x == 0 and scroll_speed is not None:
+			self.vel_x = scroll_speed
+
+		if self.vel_x > 0:
+			self.vel_x -= FRICTIONAL_FORCE / PLAYER_MASS
+			if self.vel_x <= 0:
+				self.vel_x = 0
+				self.sliding = False
+
+
+		elif self.vel_x < 0:
+			self.vel_x += FRICTIONAL_FORCE / PLAYER_MASS
+
+			if self.vel_x >= 0:
+				self.vel_x = 0
+				self.sliding = False
+
+		elif scroll_speed == 0:
+			self.sliding = False
 
 
 
@@ -377,6 +410,9 @@ class Player:
 		# print (self.vel_y)
 		self.vel_y += self.acc_y
 		self.x += self.vel_x
+
+		if abs(self.sliding_vel) > 0:
+			self.x += self.sliding_vel
 
 		self.y += self.vel_y
 
