@@ -72,7 +72,7 @@ class Player:
 		return self.rect
 
 
-	def change_movement_texture(self, ticks, scroll_speed=None):
+	def change_movement_texture(self, ticks, scroll_speed=None, raining=False):
 
 		# Death
 		if self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0:
@@ -124,7 +124,7 @@ class Player:
 
 
 			if self.sliding:
-				self.handle_slide()
+				self.handle_slide(raining=raining)
 
 			return
 
@@ -191,7 +191,7 @@ class Player:
 				self.current_texture = self.sitting_player_texture
 
 				if self.sliding:
-					self.handle_slide(scroll_speed=scroll_speed)
+					self.handle_slide(scroll_speed=scroll_speed, raining=raining)
 
 				if self.sitting_shot and ticks % SHOOT_ANIMATION_SPEED == 0:
 					self.current_texture = self.sitting_shooting_textures[self.animation_stages["sitting_shot"]]
@@ -357,7 +357,7 @@ class Player:
 				self.health -= BODY_SHOT_DAMAGE
 
 
-	def handle_slide(self, scroll_speed=None):
+	def handle_slide(self, scroll_speed=None, raining=False):
 		# self.x += self.sliding_vel
 		# print (self.vel_x)
 
@@ -365,14 +365,28 @@ class Player:
 			self.vel_x = scroll_speed
 
 		if self.vel_x > 0:
-			self.vel_x -= FRICTIONAL_FORCE / PLAYER_MASS
+			if not raining:
+				acc_x = FRICTIONAL_FORCE / PLAYER_MASS
+
+			else:
+				acc_x = RAIN_FRICTIONAL_FORCE / PLAYER_MASS
+
+			self.vel_x -= acc_x
+
 			if self.vel_x <= 0:
 				self.vel_x = 0
 				self.sliding = False
 
 
 		elif self.vel_x < 0:
-			self.vel_x += FRICTIONAL_FORCE / PLAYER_MASS
+			if not raining:
+				acc_x = FRICTIONAL_FORCE / PLAYER_MASS
+
+			else:
+				acc_x = RAIN_FRICTIONAL_FORCE / PLAYER_MASS
+
+
+			self.vel_x += acc_x
 
 			if self.vel_x >= 0:
 				self.vel_x = 0

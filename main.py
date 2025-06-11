@@ -7,6 +7,7 @@ from utilities.constants import *
 from utilities.asset_loader import *
 from utilities.stat_bars import Bar
 from utilities.boosts import Boost
+from utilities.weather_control import Weather
 from title_screen import title_screen
 
 
@@ -59,6 +60,11 @@ def main(seed=None):
 	boosts = []
 	difficulty = 0
 
+	rain_freq = 10
+	rain_speed = 20
+	# rain = generate_rain(screen, rain_speed, rain_freq)
+	weather = Weather(screen, SKY_BLUE)
+
 	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
 
 
@@ -86,10 +92,9 @@ def main(seed=None):
 		# print (int(player.blocks_travelled))
 		player.blocks_travelled += scroll_speed / BLOCK_SIZE
 
-
 		ticks += 1
 		clock.tick(FPS)
-		draw_background(screen, player)
+		draw_background(screen, player, ticks, scroll_speed, weather)
 		pygame.display.set_caption(str(round(clock.get_fps())))
 
 
@@ -120,6 +125,7 @@ def main(seed=None):
 			if spawn_stamina_boost == 0 and player.stamina < 1.0 and len(boosts) < 10:
 				stamina = Boost(screen, block.x, block.y - (stamina_texture.get_height() * 4 / 3), stamina_texture, "stamina")
 				boosts.append(stamina)
+
 
 
 		for index, block in enumerate(blocks):
@@ -332,7 +338,7 @@ def main(seed=None):
 			player.noaim_shooting = False
 			player.aimed_shot = False
 
-		player.change_movement_texture(ticks, scroll_speed=scroll_speed)
+		player.change_movement_texture(ticks, scroll_speed=scroll_speed, raining=weather.raining)
 
 
 		if surface_blocks[-1].x <= SCREEN_WIDTH:
@@ -626,14 +632,29 @@ def handle_player_stats(player):
 
 
 
-def draw_background(screen, player):
+def draw_background(screen, player, ticks, scroll_speed, weather):
 	if player.health > 0:
 		screen.fill(SKY_BLUE)
 
 	else:
 		screen.fill(HEALTH_RED)
 
+	weather.handle_rain()
+	weather.update(ticks, scroll_speed)
+	# if len(rain) > 0 and player.health > 0:
+	# 	for drop in rain:
+	# 		drop.x -= scroll_speed
+	# 		if drop.y > SCREEN_HEIGHT:
+	# 			rain.remove(drop)
+	# 			continue
 
+	# 		drop.update()
+	# 		drop.draw()
+
+
+	# 	return rain
+
+	# return []
 
 
 if __name__ == "__main__":
