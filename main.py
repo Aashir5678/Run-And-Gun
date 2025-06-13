@@ -641,6 +641,7 @@ def draw_background(screen, player, ticks, scroll_speed, weather):
 
 	weather.handle_rain()
 	weather.update(ticks, scroll_speed)
+
 	# if len(rain) > 0 and player.health > 0:
 	# 	for drop in rain:
 	# 		drop.x -= scroll_speed
