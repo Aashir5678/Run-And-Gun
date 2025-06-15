@@ -124,8 +124,8 @@ def get_blocks(screen, noise_map, start_x=0, start_n=0, surface_color=(0, 140, 0
 		block_y = (gradient * 1000) + BLOCK_SIZE * 10
 		block_y /= height_factor
 
-		if block_y > SCREEN_HEIGHT - (BLOCK_SIZE * 2):
-			block_y = SCREEN_HEIGHT - (BLOCK_SIZE * 2)
+		if block_y > SCREEN_HEIGHT:
+			block_y = SCREEN_HEIGHT - 2
 
 		elif block_y <= BLOCK_SIZE:
 			block_y = BLOCK_SIZE * 2

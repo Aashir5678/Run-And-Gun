@@ -35,13 +35,14 @@ def main(seed=None):
 	still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
 	hurt_textures, death_textures = load_player_hurt_assets()
 	heart_texture, stamina_texture = load_boost_textures()
-	single_shot_sfx, reload_sfx = load_sfx()
+	single_shot_sfx, reload_sfx, rain_sfx = load_sfx()
 
 
 	gun_channel = pygame.mixer.Channel(0)
 	music_channel = pygame.mixer.Channel(1)
 
 	
+	gun_channel.set_volume(0.4)
 
 	health_bar = Bar(screen, (20, 40), HEALTH_RED)
 	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW)
@@ -95,6 +96,7 @@ def main(seed=None):
 		ticks += 1
 		clock.tick(FPS)
 		draw_background(screen, player, ticks, scroll_speed, weather)
+
 		pygame.display.set_caption(str(round(clock.get_fps())))
 
 
@@ -221,8 +223,11 @@ def main(seed=None):
 
 
 		mx, my = pygame.mouse.get_pos()
-		
-		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % SHOOTING_COOLDOWN == 0 and player.ammo > 0 and not player.jumping and not player.hurt:
+		cooldown = SHOOTING_COOLDOWN - int(difficulty * 2)
+		if cooldown <= 0:
+			cooldown = 1
+
+		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % cooldown == 0 and player.ammo > 0 and not player.jumping and not player.hurt:
 
 			if player.sitting:
 				player.sitting_shot = True
@@ -237,7 +242,10 @@ def main(seed=None):
 			
 			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 4)), bullet_texture, flip=player.flipped)
 
-			
+			if not player.sitting:
+				mx += random.randint(-AIMED_ACCURACY, AIMED_ACCURACY)
+				my += random.randint(-AIMED_ACCURACY, AIMED_ACCURACY)
+
 			valid_bullet = bullet.set_vel(mx, my)
 
 			if bullet.vel_x < 0 and valid_bullet:
@@ -255,6 +263,7 @@ def main(seed=None):
 
 
 			else:
+				player.sitting_shot = False
 				player.aimed_shot = False
 
 		elif  pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and player.ammo > 0 and not player.jumping and not player.hurt:
@@ -640,7 +649,7 @@ def draw_background(screen, player, ticks, scroll_speed, weather):
 		screen.fill(HEALTH_RED)
 
 	weather.handle_rain()
-	weather.update(ticks, scroll_speed)
+	weather.update(ticks, scroll_speed, player)
 
 	# if len(rain) > 0 and player.health > 0:
 	# 	for drop in rain:

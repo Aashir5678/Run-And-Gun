@@ -14,8 +14,8 @@ def title_screen(seed=None):
 	run = True
 	
 	if seed is None:
-		# seed = randint(-9999, 9999)
-		seed = 7168
+		seed = randint(-9999, 9999)
+		# seed = 7168
 
 	
 	surface_blocks, blocks = generate_new_terrain(screen, 0, seed, HEIGHT_FACTOR)

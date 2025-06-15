@@ -108,9 +108,10 @@ def load_sfx():
 	pygame.mixer.init()
 	single_shot_sfx = pygame.mixer.Sound("Assets//sfx//single_shot.wav")
 	reload_sfx = pygame.mixer.Sound("Assets//sfx//reload.mp3")
+	rain_sfx = pygame.mixer.Sound("Assets//sfx//rain.mp3")
 
 
-	return single_shot_sfx, reload_sfx
+	return single_shot_sfx, reload_sfx, rain_sfx
 
 
 def load_enemy_asset(index, type_="walking"):
