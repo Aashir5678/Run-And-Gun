@@ -1,6 +1,7 @@
 import pygame
 from .constants import *
 from random import uniform, randint
+from numpy import interp
 
 pygame.init()
 pygame.mixer.init()
@@ -9,11 +10,11 @@ pygame.mixer.init()
 RAIN_WIDTH = 3
 RAIN_HEIGHT = 7
 RAIN_BLUE = (100, 100, 200)
-MAX_RAIN_SPEED = 12 # Control rain speed
-MAX_RAIN_FREQ = 15 # 15, Controls the number of rain drops per frame, larger frequency means less rain drops
-RAIN_CHANCE = FPS * 20 # Chance that it will randomly start raining
+MIN_RAIN_SPEED = 7
+MAX_RAIN_SPEED = 12 
+MAX_RAIN_FREQ = 15 # 15, Controls the number of rain drops per frame on average, larger frequency means lighter rain, smaller frequency means harder rain
+RAIN_CHANCE = FPS * 20 # Chance that it will randomly start raining every tick
 MAX_RAIN_DURATION = FPS * 90
-MAX_THUNDER_FLASH_FREQ = FPS * 6
 TRANSITION_TO_RAIN = 15
 
 
@@ -23,6 +24,7 @@ class Weather:
 		self.sky_color = sky_color
 		self.raining = False
 		self.drops = []
+		self.ticks_rained = 0
 		self.thunder_sound = pygame.mixer.Sound("Assets//sfx//thunder.wav")
 		self.rain_sound = pygame.mixer.Sound("Assets//sfx//rain.mp3")
 		self.rain_channel = pygame.mixer.Channel(2)
@@ -39,35 +41,34 @@ class Weather:
 		self.thunder_freq = 0
 		self.rain_speed = 0
 		self.rain_duration = 0
+		self.in_transition = False
 
+	def stop(self):
+		self.rain_channel.stop()
+		self.thunder_channel.stop()
 
 
 	def update(self, ticks, scroll_speed, player):
 		if self.raining and self.sky_color == DULL_SKY:
+			self.ticks_rained += 1
+
 			self.screen.fill(self.sky_color)
-			if ticks % randint(1, self.rain_freq) == 1:
+			if self.ticks_rained % randint(1, self.rain_freq) == 1:
 				if not self.rain_channel.get_busy():
 					self.rain_channel.play(self.rain_sound, fade_ms=1500)
 
 				self.drops.extend(generate_rain(self.screen, self.rain_speed, self.rain_freq))
 
-			if ticks % self.thunder_freq == 0:
+			if self.ticks_rained % self.thunder_freq == 0:
 				self.thunder_channel.play(self.thunder_sound)
 				self.thunder_channel.fadeout(7000)
 				self.screen.fill(WHITE)
 
-			if ticks % self.rain_duration == 0:
+			if self.ticks_rained >= self.rain_duration:
 				self.raining = False
+				self.ticks_rained = 0
 				return
 
-			# for drop in self.drops:
-			# 	drop.x -= scroll_speed
-			# 	if drop.y >= SCREEN_HEIGHT:
-			# 		self.drops.remove(drop)
-			# 		continue
-
-			# 	drop.update()
-			# 	drop.draw()
 
 		elif self.raining and self.sky_color != DULL_SKY:
 			
@@ -89,6 +90,12 @@ class Weather:
 			self.sky_color = (self.red, self.green, self.blue)
 			self.screen.fill(self.sky_color)
 
+			if self.sky_color == DULL_SKY:
+				self.in_transition = False
+
+			else:
+				self.in_transition = True
+
 		elif not self.raining and self.sky_color != SKY_BLUE:
 			if self.red < SKY_BLUE[0] and ticks % TRANSITION_TO_RAIN == 0:
 				self.red += 1
@@ -108,6 +115,12 @@ class Weather:
 			self.sky_color = (self.red, self.green, self.blue)
 			self.screen.fill(self.sky_color)
 
+			if self.sky_color == SKY_BLUE:
+				self.in_transition = False
+
+			else:
+				self.in_transition = True
+
 			# self.drops = []
 
 		if not self.raining and self.rain_channel.get_busy():
@@ -126,13 +139,14 @@ class Weather:
 
 
 	def handle_rain(self):
-		if not self.raining and randint(0, RAIN_CHANCE) == 0:
+		if not self.raining and randint(0, RAIN_CHANCE) == 0 and not self.in_transition:
 			self.rain_freq = randint(1, MAX_RAIN_FREQ)
-			self.rain_freq = 2
 			# self.rain_freq = 2
-			self.thunder_freq = (self.rain_freq * FPS * 4)
-			self.rain_speed = (MAX_RAIN_SPEED / self.rain_freq) *  5
+
+			self.thunder_freq = (self.rain_freq * FPS * 4) # Range: Every 4 seconds to 1 minute
 			self.rain_duration = randint(10 * FPS, MAX_RAIN_DURATION)
+
+			self.rain_speed = round(interp(self.rain_freq, [1, MAX_RAIN_FREQ], [MAX_RAIN_SPEED, MIN_RAIN_SPEED]), 3)
 
 			self.raining = True
 			# self.transition_to_rain = 1

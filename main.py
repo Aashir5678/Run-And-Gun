@@ -41,7 +41,6 @@ def main(seed=None):
 	gun_channel = pygame.mixer.Channel(0)
 	music_channel = pygame.mixer.Channel(1)
 
-	
 	gun_channel.set_volume(0.4)
 
 	health_bar = Bar(screen, (20, 40), HEALTH_RED)
@@ -151,8 +150,8 @@ def main(seed=None):
 				player.vel_y = 0
 
 
-				if player.jumping and (player.animation_stages["flip"] != 0 and player.animation_stages["flip"] != len(player.flip_textures) - 1):
-					player.health = 0
+				# if player.jumping and (player.animation_stages["flip"] != 0 and player.animation_stages["flip"] != len(player.flip_textures) - 1):
+				# 	player.health = 0
 
 				player.jumping = False
 
@@ -411,6 +410,11 @@ def main(seed=None):
 			enemies.clear()
 			bullets.clear()
 			boosts.clear()
+
+			gun_channel.stop()
+			music_channel.stop()
+			weather.stop()
+
 			player.ammo = ROUNDS_IN_MAG
 
 			if player.dead:
@@ -642,10 +646,10 @@ def handle_player_stats(player):
 
 
 def draw_background(screen, player, ticks, scroll_speed, weather):
-	if player.health > 0:
+	if player.health > 0 and not weather.raining and not weather.in_transition:
 		screen.fill(SKY_BLUE)
 
-	else:
+	elif player.health <= 0:
 		screen.fill(HEALTH_RED)
 
 	weather.handle_rain()
