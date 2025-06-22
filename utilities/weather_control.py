@@ -59,9 +59,11 @@ class Weather:
 
 				self.drops.extend(generate_rain(self.screen, self.rain_speed, self.rain_freq))
 
+
 			if self.ticks_rained % self.thunder_freq == 0:
 				self.thunder_channel.play(self.thunder_sound)
 				self.thunder_channel.fadeout(7000)
+
 				self.screen.fill(WHITE)
 
 			if self.ticks_rained >= self.rain_duration:
@@ -129,7 +131,7 @@ class Weather:
 		if len(self.drops) > 0:
 			for drop in self.drops:
 				drop.x -= scroll_speed
-				if drop.y >= SCREEN_HEIGHT or drop.hit_entity(player):
+				if drop.y >= SCREEN_HEIGHT:
 					self.drops.remove(drop)
 					continue
 

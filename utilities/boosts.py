@@ -21,7 +21,7 @@ class Boost:
 
 
 	def hit_player(self, player):
-		return self.rect.colliderect(player.rect) or (abs(self.x - player.x) < player.get_width())
+		return self.rect.colliderect(player.rect) or ((abs(self.x - player.x) < player.get_width()) and abs(self.y - player.y) < player.get_height())
 
 	def update(self, scroll_speed):
 		self.x -= scroll_speed

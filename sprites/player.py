@@ -11,7 +11,6 @@ class Player:
 		self.x = x
 		self.y = y
 		self.vel_x = 0
-		self.sliding_vel = 0
 		self.vel_y = 0
 		self.acc_y = GRAVITY
 		self.acc_x = 0
@@ -32,6 +31,7 @@ class Player:
 
 		self.stamina = 1.0
 		self.health = 1.0
+		self.ticks_since_death = 0
 
 
 		self.flipped = False
@@ -76,22 +76,29 @@ class Player:
 
 		# Death
 		if self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0:
+			self.ticks_since_death += 1
 			self.vel_x = 0
 			self.vel_y = 0
 			self.animation_stages["death"] += 1
 
-
-			if self.animation_stages["death"] == len(self.death_textures):
-				# self.health = 1.0
-				# self.stamina = 1.0
-				self.animation_stages["death"] = 0
+			if self.ticks_since_death >= 5 * FPS:
 				self.dead = True
+				return
 
-				pygame.time.delay(5000)
+
+			# if self.animation_stages["death"] == len(self.death_textures) and self.ticks_since_death < 5 * FPS:
+			# 	# self.health = 1.0
+			# 	# self.stamina = 1.0
+			# 	self.animation_stages["death"] = 0
+
+			# 	# pygame.time.delay(5000)
 
 
-			else:
+
+			if self.animation_stages["death"] < len(self.death_textures):
 				self.current_texture = self.death_textures[self.animation_stages["death"]]
+
+
 
 
 
@@ -102,6 +109,7 @@ class Player:
 			return
 
 		elif self.health <= 0:
+			self.ticks_since_death += 1
 			return
 
 
@@ -358,7 +366,6 @@ class Player:
 
 
 	def handle_slide(self, scroll_speed=None, raining=False):
-		# self.x += self.sliding_vel
 		# print (self.vel_x)
 
 		if self.vel_x == 0 and scroll_speed is not None:
@@ -376,6 +383,7 @@ class Player:
 			if self.vel_x <= 0:
 				self.vel_x = 0
 				self.sliding = False
+				self.lying = True
 
 
 		elif self.vel_x < 0:
@@ -424,9 +432,6 @@ class Player:
 		# print (self.vel_y)
 		self.vel_y += self.acc_y
 		self.x += self.vel_x
-
-		if abs(self.sliding_vel) > 0:
-			self.x += self.sliding_vel
 
 		self.y += self.vel_y
 
@@ -512,7 +517,19 @@ class Bullet:
 
 
 	def hit_entity(self, entity):
-		return entity.get_rect().colliderect(self.rect) or (abs(self.x - entity.x) < self.rect.width and abs(self.y - entity.y) < self.rect.height)
+
+		if self.y  + self.rect.height < entity.y:
+			return False
+
+		dist_x = self.x - entity.x
+		dist_y = self.y - entity.y
+
+		bullet_to_left_of_entity =  self.x < entity.x
+
+		within_range = (abs(dist_x) < entity.get_width()) and (abs(dist_y) < entity.get_height())
+
+		return entity.get_rect().colliderect(self.rect) or (within_range and not bullet_to_left_of_entity) or (within_range and dist_x == 0)
+		# return entity.get_rect().colliderect(self.rect) or (abs(self.x - entity.x) < entity.get_width() and abs(self.y - entity.y) < entity.get_height())
 
 	def get_distance(self, entity):
 		dx = self.x - entity.x

@@ -38,6 +38,12 @@ class Block:
 		self.block_surface.fill(self.color)
 		self.block_rect = self.block_surface.get_rect()
 
+	def get_width(self):
+		return self.block_rect.width
+
+	def get_height(self):
+		return self.block_rect.height
+
 	def __repr__(self):
 		return f"Block({self.x}, {self.y})"
 

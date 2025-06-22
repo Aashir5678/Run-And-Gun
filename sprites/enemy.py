@@ -39,11 +39,11 @@ class Enemy(Player):
 
 			elif dist_x > 0:
 				self.vel_x = WALKING_VEL
-				self.running = False
+				# self.running = False
 
 			else:
 				self.vel_x = -WALKING_VEL
-				self.running = False
+				# self.running = False
 				# self.flipped = True
 
 		else:
@@ -56,10 +56,12 @@ class Enemy(Player):
 			if ticks % ENEMY_SHOOTING_COOLDOWN == 0:
 				bullet = Bullet(self.screen, (self.x, self.y + (self.get_height() // 4)), bullet_texture, flip=self.flipped, player_bullet=False)
 
+				# print (abs(round(self.x - player.x)))
+				distance_innaccuracy = abs(round(self.x - player.x)) // 10
 				
 				if not player.jumping and not player.running:
-					innacuarte_x = player.x + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
-					innacuarte_y = player.y + (player.get_height() / 2) + randint(-ENEMY_INNACURACY, ENEMY_INNACURACY)
+					innacuarte_x = player.x + randint(-ENEMY_INNACURACY + distance_innaccuracy, ENEMY_INNACURACY + distance_innaccuracy)
+					innacuarte_y = player.y + (player.get_height() / 2) + randint(-ENEMY_INNACURACY + distance_innaccuracy, ENEMY_INNACURACY + distance_innaccuracy)
 
 				else:
 					innacuarte_x = player.x + uniform(-ENEMY_INNACURACY * 1.5, ENEMY_INNACURACY * 1.5)

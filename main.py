@@ -131,8 +131,9 @@ def main(seed=None):
 
 		for index, block in enumerate(blocks):
 			
-			if player.health > 0:
-				block.draw()
+			# if player.health > 0:
+			
+			block.draw()
 
 			block.x -= scroll_speed
 			block.block_rect.x = block.x
@@ -191,7 +192,7 @@ def main(seed=None):
 				break
 
 			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
-				if not player.sitting and not player.lying:
+				if not player.sitting and not player.lying and not player.sliding:
 					player.hurt = True
 
 				player.take_damage(bullet)
@@ -212,7 +213,10 @@ def main(seed=None):
 
 				# Enemies advance on player if the player is camping behind a hill or if enemy has an ineffective shooting spot
 				elif not bullet.is_player_bullet() and bullet.get_distance(player) > player.get_height() / 2 and enemy.at_shoot_dist:
-					enemy.shoot_dist -= 5
+					enemy.aimed_shot = False
+					enemy.at_shoot_dist = False
+					enemy.aiming = False
+					enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x)))
 
 			bullet.update()
 			bullet.draw()
@@ -226,7 +230,7 @@ def main(seed=None):
 		if cooldown <= 0:
 			cooldown = 1
 
-		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % cooldown == 0 and player.ammo > 0 and not player.jumping and not player.hurt:
+		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % cooldown == 0 and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
 
 			if player.sitting:
 				player.sitting_shot = True
@@ -265,7 +269,7 @@ def main(seed=None):
 				player.sitting_shot = False
 				player.aimed_shot = False
 
-		elif  pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and player.ammo > 0 and not player.jumping and not player.hurt:
+		elif  pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
 			if player.sitting:
 				player.sitting_shot = True
 
@@ -279,7 +283,7 @@ def main(seed=None):
 
 			
 
-		elif pygame.mouse.get_pressed()[2] and not player.jumping and not player.hurt:
+		elif pygame.mouse.get_pressed()[2] and not player.jumping and not player.hurt and player.health > 0:
 			player.aiming = True
 
 			if mx < player.x and not player.flipped:
@@ -301,7 +305,7 @@ def main(seed=None):
 
 
 
-		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping and ticks % SHOOTING_COOLDOWN == 0 :
+		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.hurt and not player.jumping and ticks % SHOOTING_COOLDOWN == 0 and player.health > 0:
 			player.noaim_shooting = True
 			player.sitting = False
 			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 2)), bullet_texture, flip=player.flipped)
@@ -338,7 +342,7 @@ def main(seed=None):
 					enemy.vel_x = 0
 					enemy.shoot_dist = enemy.x
 
-		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping:
+		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping and player.health > 0:
 			player.noaim_shooting = True
 
 		else:
@@ -356,7 +360,7 @@ def main(seed=None):
 			surface_blocks.extend(new_suface_blocks)
 			blocks.extend(new_blocks)
 
-		if player.x > SCREEN_WIDTH // 4 and (player.vel_x > 0 or player.sliding_vel > 0):
+		if player.x > SCREEN_WIDTH // 4 and (player.vel_x > 0):
 			scroll_speed = player.vel_x
 			if not player.sliding:
 				player.vel_x = 0
@@ -407,17 +411,21 @@ def main(seed=None):
 
 
 		if player.health <= 0:
-			enemies.clear()
-			bullets.clear()
-			boosts.clear()
+			# enemies.clear()
+			# bullets.clear()
+			# boosts.clear()
 
-			gun_channel.stop()
-			music_channel.stop()
-			weather.stop()
+			# gun_channel.stop()
+			# music_channel.stop()
+			# weather.stop()
 
-			player.ammo = ROUNDS_IN_MAG
+			# player.ammo = ROUNDS_IN_MAG
 
 			if player.dead:
+				gun_channel.stop()
+				music_channel.stop()
+				weather.stop()
+
 				return True
 
 
@@ -427,10 +435,11 @@ def main(seed=None):
 		stamina_bar.set_value(player.stamina)
 		# print (player.health)
 
-		if player.health > 0:
-			stamina_bar.draw()
-			health_bar.draw()
-			draw_ammo(screen, player.ammo, ammo_texture, empty_ammo_texture)
+		# if player.health > 0:
+
+		stamina_bar.draw()
+		health_bar.draw()
+		draw_ammo(screen, player.ammo, ammo_texture, empty_ammo_texture)
 
 
 		for enemy in enemies:
@@ -510,7 +519,34 @@ def draw_ammo(screen, ammo, bullet_texture, empty_bullet_texture):
 
 
 def handle_movement(keys, player, ticks):
-	# print (player.running)
+	# Sliding
+	if keys[pygame.K_c] and keys[pygame.K_LSHIFT] and not player.jumping and not player.sliding and player.stamina >= 0.15 and player.running:
+		player.sitting = True
+		player.sliding = True
+		player.vel_x = SPRINTING_VEL
+		player.y += player.get_height() // 2
+		player.stamina -= STAMINA_TO_SLIDE
+		player.vel_x = SPRINTING_VEL
+
+		player.running = False
+		player.animation_stages["standing_reload"] = 0
+		player.standing_reload = False
+
+	elif not player.sliding:
+		# player.vel_x = 0
+		if keys[pygame.K_c] and not player.jumping:
+			player.sitting = True
+			player.y += player.get_height() // 2
+
+		elif player.sitting:
+			player.sitting = False
+			player.y -= player.get_height() // 2
+
+	elif not keys[pygame.K_c] or not keys[pygame.K_LSHIFT]:
+		player.sliding = False
+
+
+
 	if keys[pygame.K_d] and not player.sitting and not player.lying and not player.aiming:
 		if not player.running:
 			player.vel_x = WALKING_VEL
@@ -531,33 +567,10 @@ def handle_movement(keys, player, ticks):
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 
-	elif keys[pygame.K_c] and not player.jumping:
-		player.lying = False
-
-		if keys[pygame.K_LSHIFT] and player.stamina >= 0.15 and not player.sliding and not player.sitting:
-			player.sitting = True
-			player.sliding = True
-			player.vel_x = SPRINTING_VEL
-			player.y += player.get_height() // 2
-
-			player.stamina -= STAMINA_TO_SLIDE
-
-		elif not player.sitting:
-			player.sitting = True
-			player.y += player.get_height() // 2
-			player.slidng = False
-
-		elif not player.sliding:
-			player.sliding = False
-			player.vel_x = 0
-
-		# else:
-		# 	# player.y -= player.get_height() 
-		# 	player.sitting = False
 
 
 
-		return
+		# return
 
 	elif keys[pygame.K_x] and (player.sitting or player.lying) and not player.aiming and not player.jumping:
 		player.sitting = False
@@ -576,13 +589,9 @@ def handle_movement(keys, player, ticks):
 		if not player.sitting:
 			player.sliding = False
 
-		player.sitting = False
+		# player.sitting = False
 		player.lying = False
 
-
-	# elif keys[pygame.K_q] and ticks % 5 == 0:
-	# 	player.hurt = True
-	# 	player.health -= 0.1
 
 	if keys[pygame.K_SPACE] and not player.jumping and player.current_texture not in player.flip_textures and player.stamina >= STAMINA_TO_FLIP:
 		player.animation_stages["standing_reload"] = 0
@@ -597,7 +606,7 @@ def handle_movement(keys, player, ticks):
 		player.sitting = False
 		player.update()
 
-	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15 and not player.sliding and abs(player.vel_x) > 0:
+	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15 and not player.sliding and abs(player.vel_x) > 0: #  and abs(player.vel_x) > 0
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
 		player.sitting = False
@@ -605,6 +614,7 @@ def handle_movement(keys, player, ticks):
 		player.aimed_shot = False
 
 		player.running = True
+
 
 	elif not player.sitting:
 		player.running = False
@@ -646,14 +656,15 @@ def handle_player_stats(player):
 
 
 def draw_background(screen, player, ticks, scroll_speed, weather):
-	if player.health > 0 and not weather.raining and not weather.in_transition:
-		screen.fill(SKY_BLUE)
-
-	elif player.health <= 0:
-		screen.fill(HEALTH_RED)
 
 	weather.handle_rain()
 	weather.update(ticks, scroll_speed, player)
+
+	if not weather.raining and not weather.in_transition:
+		screen.fill(SKY_BLUE)
+
+	# elif player.health <= 0:
+	# 	screen.fill(HEALTH_RED)
 
 	# if len(rain) > 0 and player.health > 0:
 	# 	for drop in rain:
