@@ -6,7 +6,7 @@ import math
 pygame.init()
 
 class Player:
-	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, sitting_shooting_textures=None, lying_player_texture=None, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None, sitting_player_texture=None):
+	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, sitting_shooting_textures=None, lying_player_texture=None, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None, sitting_player_texture=None, attack_textures=None):
 		self.screen = screen
 		self.x = x
 		self.y = y
@@ -28,10 +28,12 @@ class Player:
 		self.sitting_player_texture = sitting_player_texture
 		self.lying_player_texture = lying_player_texture
 		self.sitting_shooting_textures = sitting_shooting_textures
+		self.attack_textures  = attack_textures
 
 		self.stamina = 1.0
 		self.health = 1.0
 		self.ticks_since_death = 0
+		self.ticks_since_attack = 0
 
 
 		self.flipped = False
@@ -47,6 +49,7 @@ class Player:
 		self.sitting_shot = False
 		self.dead = False
 		self.sliding = False
+		self.attacking = False
 
 		self.in_animation = False
 		self.ammo = ROUNDS_IN_MAG
@@ -56,7 +59,7 @@ class Player:
 
 		# Indicies representing which stage of the movement animations to play
 
-		self.animation_stages = {"walk": 0, "run": 0, "flip": 0, "aimed_shot": 0, "noaim_shot": 0, "standing_reload": 0, "hurt": 0, "death": 0, "sitting_shot": 0}
+		self.animation_stages = {"walk": 0, "run": 0, "flip": 0, "aimed_shot": 0, "noaim_shot": 0, "standing_reload": 0, "hurt": 0, "death": 0, "sitting_shot": 0, "attack": 0}
 
 		
 		self.current_texture = self.still_texture
@@ -75,6 +78,7 @@ class Player:
 	def change_movement_texture(self, ticks, scroll_speed=None, raining=False):
 
 		# Death
+
 		if self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0:
 			self.ticks_since_death += 1
 			self.vel_x = 0
@@ -95,7 +99,7 @@ class Player:
 
 
 
-			if self.animation_stages["death"] < len(self.death_textures):
+			if self.death_textures is not None and self.animation_stages["death"] < len(self.death_textures):
 				self.current_texture = self.death_textures[self.animation_stages["death"]]
 
 
@@ -140,17 +144,39 @@ class Player:
 			return
 
 
+		# Attacking 
+
+		if self.attacking and ticks % ATTACK_ANIMATION_SPEED == 0 and self.stamina >= STAMINA_TO_ATTACK and not self.jumping and self.vel_x == 0:
+			self.current_texture = self.attack_textures[self.animation_stages["attack"]]
+			self.ticks_since_attack = 0
+			self.animation_stages["attack"] += 1
+
+			if self.animation_stages["attack"] >= len(self.attack_textures):
+				self.animation_stages["attack"] = 0
+				self.attacking = False
+
+			if self.flipped:
+				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+
+
+
+			return
+
+		elif self.attacking:
+			return
 
 		# Reloading
 
 		if self.standing_reload and ticks % STANDING_RELOAD_ANIMATION_SPEED == 0:
 			self.current_texture = self.standing_reload_textures[self.animation_stages["standing_reload"]]
 			self.animation_stages["standing_reload"] += 1
+			
 
 			if self.animation_stages["standing_reload"] >= len(self.standing_reload_textures):
 				self.animation_stages["standing_reload"] = 0
 				self.standing_reload = False
 				self.ammo = ROUNDS_IN_MAG
+
 
 
 			if self.flipped:
@@ -323,6 +349,7 @@ class Player:
 
 			if self.animation_stages["flip"] >= len(self.flip_textures):
 				self.jumping = False
+				print ("not jumping")
 				self.animation_stages["flip"] = 0
 
 
@@ -331,11 +358,16 @@ class Player:
 
 
 		self.rect = self.current_texture.get_rect()
-
+		self.ticks_since_attack += 1
 		self.rect.x = self.x
 		self.rect.y = self.y
 
-	def take_damage(self, bullet):
+	def take_damage(self, bullet=None):
+		if bullet is None:
+			self.health -= ATTACK_DAMAGE
+
+			return
+
 		if not self.sitting and not self.lying:
 			if bullet.y <= (self.y + (self.get_height() // 4)):
 				self.health -= HEAD_SHOT_DAMAGE
@@ -414,7 +446,7 @@ class Player:
 		self.in_animation = False
 
 		for stage in self.animation_stages.values():
-			if stage == 0:
+			if stage != 0:
 				self.in_animation = True
 				break
 

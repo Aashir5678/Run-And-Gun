@@ -7,7 +7,7 @@ pygame.init()
 pygame.mixer.init()
 
 
-RAIN_WIDTH = 3
+RAIN_WIDTH = 2 # 3
 RAIN_HEIGHT = 7
 RAIN_BLUE = (100, 100, 200)
 MIN_RAIN_SPEED = 7
@@ -60,7 +60,13 @@ class Weather:
 				self.drops.extend(generate_rain(self.screen, self.rain_speed, self.rain_freq))
 
 
-			if self.ticks_rained % self.thunder_freq == 0:
+			if player.health < 0.5:
+				chance_of_thunder = self.thunder_freq // 2
+
+			else:
+				chance_of_thunder = self.thunder_freq
+
+			if self.ticks_rained % chance_of_thunder == 0:
 				self.thunder_channel.play(self.thunder_sound)
 				self.thunder_channel.fadeout(7000)
 
@@ -142,7 +148,7 @@ class Weather:
 
 	def handle_rain(self):
 		if not self.raining and randint(0, RAIN_CHANCE) == 0 and not self.in_transition:
-			self.rain_freq = randint(1, MAX_RAIN_FREQ)
+			self.rain_freq = randint(2, MAX_RAIN_FREQ)
 			# self.rain_freq = 2
 
 			self.thunder_freq = (self.rain_freq * FPS * 4) # Range: Every 4 seconds to 1 minute

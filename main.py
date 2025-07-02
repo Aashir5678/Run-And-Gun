@@ -32,10 +32,16 @@ def main(seed=None):
 	# Load assets
 
 
-	still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
+
+	# still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, attack_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
 	hurt_textures, death_textures = load_player_hurt_assets()
 	heart_texture, stamina_texture = load_boost_textures()
 	single_shot_sfx, reload_sfx, rain_sfx = load_sfx()
+
+	still_player_texture, sitting_player_texture, lying_player_texture = load_player_still_assets()
+	walking_textures, running_textures, flip_textures = load_player_movement_assets()
+	aim_texture, aimed_shooting_textures, attack_textures,  sitting_shooting_textures, standing_reload_textures, no_aim_shooting_textures = load_player_offense_assets()
+	bullet_texture, empty_bullet_texture =  load_bullet_assets()
 
 
 	gun_channel = pygame.mixer.Channel(0)
@@ -78,8 +84,7 @@ def main(seed=None):
 	clock = pygame.time.Clock()
 	ticks = 0
 
-	player = Player(screen, surface_blocks[0].y - still_player_texture.get_height(), 0, still_player_texture, walking_textures, aim_texture, sitting_shooting_textures=sitting_shoot, lying_player_texture=lying_player_texture, sitting_player_texture=sitting_player_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures)
-
+	player = Player(screen, 0, surface_blocks[0].y - still_player_texture.get_height(), still_player_texture, walking_textures, aim_texture, sitting_shooting_textures=sitting_shooting_textures, lying_player_texture=lying_player_texture, sitting_player_texture=sitting_player_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures, attack_textures=attack_textures)
 	print (f"Seed: {str(seed)}")
 
 
@@ -147,16 +152,16 @@ def main(seed=None):
 
 			# Prevents player from sinking in to the floor
 			if (player.on_block(block) and player.vel_y > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks:
-				player.y = block.y - player.get_height() + 1
+				player.y = block.y - player.get_height() # + 1
 				player.vel_y = 0
 
 
 				# if player.jumping and (player.animation_stages["flip"] != 0 and player.animation_stages["flip"] != len(player.flip_textures) - 1):
 				# 	player.health = 0
 
-				player.jumping = False
+				# player.jumping = False
 
-				player.animation_stages["flip"] = 0
+				# player.animation_stages["flip"] = 0
 
 
 				if player.vel_x == 0 and not player.in_animation:
@@ -193,20 +198,20 @@ def main(seed=None):
 
 			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
 				if not player.sitting and not player.lying and not player.sliding:
-					player.hurt = True
+					# player.hurt = True
+					pass
 
-				player.take_damage(bullet)
+				# player.take_damage(bullet=bullet)
 				bullets.remove(bullet)
 
 
 			for enemy in enemies:
+
 				if bullet.hit_entity(enemy) and bullet.is_player_bullet():
 					# enemies.remove(enemy)
 
-					enemy.take_damage(bullet)
+					enemy.take_damage(bullet=bullet)
 
-					if enemy.health <= 0:
-						enemies.remove(enemy)
 					bullets.remove(bullet)
 					break
 
@@ -217,6 +222,10 @@ def main(seed=None):
 					enemy.at_shoot_dist = False
 					enemy.aiming = False
 					enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x)))
+
+
+				if enemy.health <= 0:
+					enemies.remove(enemy)
 
 			bullet.update()
 			bullet.draw()
@@ -264,12 +273,21 @@ def main(seed=None):
 
 				gun_channel.play(single_shot_sfx)
 
+				# Make enemies in range start shooting if player is shooting
+				for enemy in enemies:
+					if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
+						enemy.aiming = True
+						enemy.aimed_shot = True
+						enemy.at_shoot_dist = True
+						enemy.vel_x = 0
+						enemy.shoot_dist = enemy.x
+
 
 			else:
 				player.sitting_shot = False
 				player.aimed_shot = False
 
-		elif  pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
+		elif pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
 			if player.sitting:
 				player.sitting_shot = True
 
@@ -279,6 +297,15 @@ def main(seed=None):
 			else:
 				player.aiming = True
 				player.aimed_shot = True
+
+				# Make enemies in range start shooting if player is shooting
+				for enemy in enemies:
+					if abs(enemy.x - player.x) < MAX_ENEMY_SHOOT_DIST:
+						enemy.aiming = True
+						enemy.aimed_shot = True
+						enemy.at_shoot_dist = True
+						enemy.vel_x = 0
+						enemy.shoot_dist = enemy.x
 
 
 			
@@ -454,7 +481,25 @@ def main(seed=None):
 				bullets.append(bullet)
 
 
-			
+			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking:
+				enemy.aimed_shot = False
+				enemy.take_damage()
+
+				# Possibly add fling with an angle upwards
+				if player.x > enemy.x:
+					if player.vel_x != 0:
+						enemy.vel_x = -ATTACK_KNOCKBACK * player.vel_x
+
+					else:
+						enemy.vel_x = -ATTACK_KNOCKBACK
+
+				else:
+					if player.vel_x != 0:
+						enemy.vel_x = ATTACK_KNOCKBACK * player.vel_x
+
+					else:
+						enemy.vel_x = ATTACK_KNOCKBACK
+
 			enemy.update()
 			enemy.draw()
 
@@ -583,6 +628,14 @@ def handle_movement(keys, player, ticks):
 		# else:
 		# 	player.lying = False
 
+	elif keys[pygame.K_f] and not player.attacking and player.ticks_since_attack >= ATTACK_COOLDOWN:
+		player.attacking = True
+		player.stamina -= STAMINA_TO_ATTACK
+		player.ticks_since_attack = 0
+
+
+		return
+
 
 	else:
 
@@ -604,6 +657,7 @@ def handle_movement(keys, player, ticks):
 		player.aiming = False
 		player.aimed_shot = False
 		player.sitting = False
+		player.attacking =  False
 		player.update()
 
 	elif keys[pygame.K_LSHIFT] and player.stamina >= 0.15 and not player.sliding and abs(player.vel_x) > 0: #  and abs(player.vel_x) > 0
@@ -612,6 +666,7 @@ def handle_movement(keys, player, ticks):
 		player.sitting = False
 		player.aiming = False
 		player.aimed_shot = False
+		player.attacking = False
 
 		player.running = True
 
@@ -620,7 +675,7 @@ def handle_movement(keys, player, ticks):
 		player.running = False
 
 
-	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG and not player.aiming:
+	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG and not player.aiming and not player.attacking:
 		player.running = False
 		# player.sitting = False
 		player.standing_reload = True

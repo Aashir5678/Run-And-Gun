@@ -1,6 +1,5 @@
 import pygame
 from utilities.constants import *
-from utilities.asset_loader import load_player_assets
 from utilities.map_generator import *
 from sprites.player import Player
 from random import randint
