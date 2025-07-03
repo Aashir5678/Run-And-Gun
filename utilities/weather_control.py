@@ -137,12 +137,13 @@ class Weather:
 		if len(self.drops) > 0:
 			for drop in self.drops:
 				drop.x -= scroll_speed
-				if drop.y >= SCREEN_HEIGHT:
+				if drop.y >= SCREEN_HEIGHT or drop.x < 0:
 					self.drops.remove(drop)
 					continue
 
 				drop.update()
-				drop.draw()
+				if drop.x < SCREEN_WIDTH:
+					drop.draw()
 
 
 

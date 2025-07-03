@@ -438,8 +438,16 @@ class Player:
 
 
 	def on_block(self, block):
+		# if self.rect.colliderect(block.block_rect):
+		# 	return True
 
-		return self.rect.colliderect(block.block_rect)
+
+		diff_x = abs(block.block_rect.x - self.rect.x)
+		diff_y = abs(block.block_rect.y - self.rect.y)
+
+
+		# if block.block_rect.x > self.rect.x:
+		return diff_x <= self.get_width() and diff_y <= self.get_height() and self.rect.colliderect(block.block_rect)
 
 	def update(self):
 

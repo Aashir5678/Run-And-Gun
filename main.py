@@ -151,7 +151,7 @@ def main(seed=None):
 
 
 			# Prevents player from sinking in to the floor
-			if (player.on_block(block) and player.vel_y > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks:
+			if (player.on_block(block) and player.vel_y > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks and not player.jumping:
 				player.y = block.y - player.get_height() # + 1
 				player.vel_y = 0
 
@@ -182,6 +182,12 @@ def main(seed=None):
 				if (enemy.on_block(block) and enemy.vel_y > 0) or (abs(enemy.x - block.x) <= BLOCK_SIZE and abs(enemy.y - block.y) < enemy.get_height()) and block in surface_blocks:
 					enemy.y = block.y - enemy.get_height() + 1
 					enemy.vel_y = 0
+					if enemy.flinged:
+						enemy.flinged = False
+						enemy.at_shoot_dist = True
+						enemy.vel_x = 0
+
+
 					# enemy.acc_y = 0
 
 
@@ -198,10 +204,9 @@ def main(seed=None):
 
 			elif bullet.hit_entity(player) and not bullet.is_player_bullet():
 				if not player.sitting and not player.lying and not player.sliding:
-					# player.hurt = True
-					pass
+					player.hurt = True
 
-				# player.take_damage(bullet=bullet)
+				player.take_damage(bullet=bullet)
 				bullets.remove(bullet)
 
 
@@ -224,9 +229,7 @@ def main(seed=None):
 					enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x)))
 
 
-				if enemy.health <= 0:
-					enemies.remove(enemy)
-
+				
 			bullet.update()
 			bullet.draw()
 		
@@ -235,11 +238,8 @@ def main(seed=None):
 
 
 		mx, my = pygame.mouse.get_pos()
-		cooldown = SHOOTING_COOLDOWN - int(difficulty * 2)
-		if cooldown <= 0:
-			cooldown = 1
-
-		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % cooldown == 0 and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
+		
+		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % SHOOTING_COOLDOWN == 0 and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
 
 			if player.sitting:
 				player.sitting_shot = True
@@ -279,7 +279,9 @@ def main(seed=None):
 						enemy.aiming = True
 						enemy.aimed_shot = True
 						enemy.at_shoot_dist = True
-						enemy.vel_x = 0
+						if not enemy.flinged:
+							enemy.vel_x = 0
+
 						enemy.shoot_dist = enemy.x
 
 
@@ -304,9 +306,10 @@ def main(seed=None):
 						enemy.aiming = True
 						enemy.aimed_shot = True
 						enemy.at_shoot_dist = True
-						enemy.vel_x = 0
+						if not enemy.flinged:
+							enemy.vel_x = 0
+							
 						enemy.shoot_dist = enemy.x
-
 
 			
 
@@ -327,7 +330,9 @@ def main(seed=None):
 					enemy.aiming = True
 					enemy.aimed_shot = True
 					enemy.at_shoot_dist = True
-					enemy.vel_x = 0
+					if not enemy.flinged:
+						enemy.vel_x = 0
+						
 					enemy.shoot_dist = enemy.x
 
 
@@ -477,6 +482,11 @@ def main(seed=None):
 
 			bullet = enemy.follow_player(player, ticks, bullet_texture)
 
+			if enemy.health <= 0:
+				enemies.remove(enemy)
+				continue
+
+
 			if bullet is not None:
 				bullets.append(bullet)
 
@@ -484,21 +494,22 @@ def main(seed=None):
 			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking:
 				enemy.aimed_shot = False
 				enemy.take_damage()
+				enemy.fling(player)
 
-				# Possibly add fling with an angle upwards
-				if player.x > enemy.x:
-					if player.vel_x != 0:
-						enemy.vel_x = -ATTACK_KNOCKBACK * player.vel_x
+				# # Possibly add fling with an angle upwards
+				# if player.x > enemy.x:
+				# 	if player.vel_x != 0:
+				# 		enemy.vel_x = -ATTACK_KNOCKBACK * player.vel_x
 
-					else:
-						enemy.vel_x = -ATTACK_KNOCKBACK
+				# 	else:
+				# 		enemy.vel_x = -ATTACK_KNOCKBACK
 
-				else:
-					if player.vel_x != 0:
-						enemy.vel_x = ATTACK_KNOCKBACK * player.vel_x
+				# else:
+				# 	if player.vel_x != 0:
+				# 		enemy.vel_x = ATTACK_KNOCKBACK * player.vel_x
 
-					else:
-						enemy.vel_x = ATTACK_KNOCKBACK
+				# 	else:
+				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
 			enemy.update()
 			enemy.draw()

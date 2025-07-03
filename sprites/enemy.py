@@ -11,9 +11,16 @@ class Enemy(Player):
 		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=None, death_textures=death_textures, standing_reload_textures=None)
 		self.shoot_dist = randint(MIN_ENEMY_SHOOT_DIST, MAX_ENEMY_SHOOT_DIST)
 		self.at_shoot_dist = False
+		self.flinged = False
 
 	def follow_player(self, player, ticks, bullet_texture):
 		dist_x = player.x - self.x
+
+		if self.flinged:
+			return
+
+		# if self.flinged:
+		# 	return
 
 		# if dist_x == ENEMY_SHOOT_DIST:
 		# 	self.aiming = True
@@ -70,9 +77,30 @@ class Enemy(Player):
 				if valid_bullet:
 					return bullet 
 
+	def fling(self, player):
+		self.flinged = True
+		self.initial_x = self.x
+		self.initial_y = self.y
+		self.current_texture = self.still_texture
+
+		if self.flipped:
+			self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+
+		if self.x < player.x:
+			self.vel_x = uniform(-BLOCK_SIZE * FLING_CONSTANT, 0)
+
+		else:
+			self.vel_x = uniform(0, BLOCK_SIZE * FLING_CONSTANT)
+
+
+		self.vel_y = -BLOCK_SIZE * FLING_CONSTANT
+
 
 
 	def change_movement_texture(self, player, ticks):
+		if self.flinged:
+			return
+
 		super().change_movement_texture(ticks)
 
 
