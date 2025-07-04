@@ -55,7 +55,7 @@ def main(seed=None):
 	ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(bullet_texture, 90), 3)
 	empty_ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(empty_bullet_texture, 90), 3)
 
-	enemy_standing_texture, enemy_walking_textures, enemy_running_textures, enemy_standing_shooting_textures = load_enemy_assets()
+	enemy_standing_texture, enemy_walking_textures, enemy_running_textures, enemy_standing_shooting_textures, enemy_hurt_textures, enemy_dead_textures = load_enemy_assets()
 	# print (len(enemy_walking_textures))
 	bullets = []
 
@@ -138,7 +138,8 @@ def main(seed=None):
 			
 			# if player.health > 0:
 			
-			block.draw()
+			if block.x >= -BLOCK_SIZE and block.x <= SCREEN_WIDTH:
+				block.draw()
 
 			block.x -= scroll_speed
 			block.block_rect.x = block.x
@@ -216,6 +217,7 @@ def main(seed=None):
 					# enemies.remove(enemy)
 
 					enemy.take_damage(bullet=bullet)
+					enemy.hurt = True
 
 					bullets.remove(bullet)
 					break
@@ -226,7 +228,9 @@ def main(seed=None):
 					enemy.aimed_shot = False
 					enemy.at_shoot_dist = False
 					enemy.aiming = False
-					enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x)))
+
+					if enemy.shoot_dist > enemy.get_width() + player.get_width() and player.health > 0:
+						enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x + player.get_width())))
 
 
 				
@@ -394,11 +398,8 @@ def main(seed=None):
 
 		if player.x > SCREEN_WIDTH // 4 and (player.vel_x > 0):
 			scroll_speed = player.vel_x
-			if not player.sliding:
-				player.vel_x = 0
+			player.vel_x = 0
 
-			else:
-				player.vel_x = 0
 
 		elif player.x < SCREEN_WIDTH // 4 and player.vel_x < 0 or player.in_animation:
 			scroll_speed = 0 # player.vel_x
@@ -425,20 +426,23 @@ def main(seed=None):
 			difficulty = player.blocks_travelled / BLOCKS_TILL_DIFFICULTY_INCREASE
 
 
-		odds = int(ENEMY_SPAWN_RATE - difficulty)
+		odds = int(ENEMY_SPAWN_RATE - int((difficulty) * DIFFICULTY_MULTIPLIER))
+
 
 
 		if odds < MAX_SPAWN_RATE:
 			odds = MAX_SPAWN_RATE
+		
 
 		if random.randint(0, odds) == 0 and surface_blocks and len(enemies) < MAX_ENEMIES_AT_ONCE:
+			print (f"1 in {str((odds + 1))} chance per frame")
 			random_block = choice(surface_blocks)
 			
 			
 			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
 				print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
 				print (f"Difficulty: {str(round(difficulty, 2))}")
-				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures))
+				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures))
 
 
 
@@ -482,7 +486,7 @@ def main(seed=None):
 
 			bullet = enemy.follow_player(player, ticks, bullet_texture)
 
-			if enemy.health <= 0:
+			if enemy.dead:
 				enemies.remove(enemy)
 				continue
 
@@ -491,7 +495,7 @@ def main(seed=None):
 				bullets.append(bullet)
 
 
-			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking:
+			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK:
 				enemy.aimed_shot = False
 				enemy.take_damage()
 				enemy.fling(player)
@@ -512,7 +516,9 @@ def main(seed=None):
 				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
 			enemy.update()
-			enemy.draw()
+			
+			if enemy.x > 0 and enemy.x < SCREEN_WIDTH:
+				enemy.draw()
 
 
 		player.update()
@@ -545,7 +551,8 @@ def main(seed=None):
 		pygame.display.update()
 
 
-	print (sum(fps_sum) / len(fps_sum))
+
+	print (round(sum(fps_sum) / len(fps_sum), 2))
 	# pygame.quit()
 	return False
 
@@ -625,7 +632,6 @@ def handle_movement(keys, player, ticks):
 
 
 
-
 		# return
 
 	elif keys[pygame.K_x] and (player.sitting or player.lying) and not player.aiming and not player.jumping:
@@ -639,10 +645,9 @@ def handle_movement(keys, player, ticks):
 		# else:
 		# 	player.lying = False
 
-	elif keys[pygame.K_f] and not player.attacking and player.ticks_since_attack >= ATTACK_COOLDOWN:
+	elif keys[pygame.K_f] and not player.attacking and player.ticks_since_attack >= ATTACK_COOLDOWN and player.stamina >= STAMINA_TO_ATTACK:
 		player.attacking = True
 		player.stamina -= STAMINA_TO_ATTACK
-		player.ticks_since_attack = 0
 
 
 		return
@@ -654,6 +659,7 @@ def handle_movement(keys, player, ticks):
 			player.sliding = False
 
 		# player.sitting = False
+		player.vel_x = 0
 		player.lying = False
 
 

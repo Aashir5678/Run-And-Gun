@@ -1,5 +1,6 @@
 
 from utilities.constants import *
+from utilities.map_generator import Block
 import pygame
 import math
 
@@ -75,11 +76,11 @@ class Player:
 		return self.rect
 
 
-	def change_movement_texture(self, ticks, scroll_speed=None, raining=False):
+	def change_movement_texture(self, ticks, scroll_speed=None, raining=False, enemy=False):
 
 		# Death
 
-		if self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0:
+		if (not enemy and self.health <= 0 and ticks % DEATH_ANIMATION_SPEED == 0) or (enemy and self.health <= 0 and ticks % ENEMY_DEATH_ANIMATION_SPEED == 0):
 			self.ticks_since_death += 1
 			self.vel_x = 0
 			self.vel_y = 0
@@ -106,7 +107,7 @@ class Player:
 
 
 
-			if self.flipped:
+			if self.flipped and not enemy or (not self.flipped and enemy):
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 
 
@@ -119,12 +120,13 @@ class Player:
 
 		# Hurt
 
-		elif self.hurt and ticks % HURT_ANIMATION_SPEED == 0:
+		elif not enemy and self.hurt and ticks % HURT_ANIMATION_SPEED == 0 or (enemy and self.hurt and ticks % ENEMY_HURT_ANIMATION_SPEED == 0):
 			self.animation_stages["hurt"] += 1
 
 			if self.animation_stages["hurt"] == len(self.hurt_textures):
 				self.animation_stages["hurt"] = 0
 				self.hurt = False
+				self.current_texture = self.still_texture
 
 			else:
 				self.current_texture = self.hurt_textures[self.animation_stages["hurt"]]
@@ -140,6 +142,7 @@ class Player:
 
 			return
 
+
 		elif self.hurt:
 			return
 
@@ -148,7 +151,9 @@ class Player:
 
 		if self.attacking and ticks % ATTACK_ANIMATION_SPEED == 0 and self.stamina >= STAMINA_TO_ATTACK and not self.jumping and self.vel_x == 0:
 			self.current_texture = self.attack_textures[self.animation_stages["attack"]]
-			self.ticks_since_attack = 0
+			if self.animation_stages["attack"] == 0:
+				self.ticks_since_attack = 0
+				
 			self.animation_stages["attack"] += 1
 
 			if self.animation_stages["attack"] >= len(self.attack_textures):
@@ -441,13 +446,25 @@ class Player:
 		# if self.rect.colliderect(block.block_rect):
 		# 	return True
 
+		if self.rect.y > block.block_rect.y:
+			return False
+
+
 
 		diff_x = abs(block.block_rect.x - self.rect.x)
 		diff_y = abs(block.block_rect.y - self.rect.y)
 
+		if self.rect.x > block.block_rect.x:
+			width = BLOCK_SIZE
 
+		else:
+			width = self.get_width()
+
+
+
+		return diff_x <= width and diff_y <= self.get_height() and self.rect.colliderect(block.block_rect)
 		# if block.block_rect.x > self.rect.x:
-		return diff_x <= self.get_width() and diff_y <= self.get_height() and self.rect.colliderect(block.block_rect)
+		# return diff_x <= self.get_width() and diff_y <= self.get_height() and self.rect.colliderect(block.block_rect)
 
 	def update(self):
 
@@ -557,6 +574,9 @@ class Bullet:
 
 
 	def hit_entity(self, entity):
+
+		if not isinstance(entity, Block) and entity.health <= 0:
+			return False
 
 		if self.y  + self.rect.height < entity.y:
 			return False

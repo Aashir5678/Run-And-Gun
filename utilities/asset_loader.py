@@ -189,6 +189,12 @@ def load_enemy_asset(index, type_="walking"):
 	elif type_ == "running":
 		path = f"Assets//enemy_run//enemy_run{str(index)}.png"
 
+	elif type_ == "enemy_hurt":
+		path = f"Assets//enemy_hurt//enemy_hurt{str(index)}.png"
+
+	elif type_ == "dead":
+		path = f"Assets//enemy_dead/enemy_dead{str(index)}.png"
+
 	try:
 		asset = pygame.image.load(path)
 
@@ -207,16 +213,24 @@ def load_enemy_assets():
 	walking = []
 	running = []
 	standing_shoot = []
+	hurt = []
+	dead = []
 
 	for i in range(1, 8):
 		running.append(load_enemy_asset(i, type_="running"))
 		walking.append(load_enemy_asset(i, type_="walking"))
 
+		if i <= 3:
+			hurt.append(load_enemy_asset(i, type_="enemy_hurt"))
+
 		if i <= 4:
 			standing_shoot.append(load_enemy_asset(i, type_="standing_shoot"))
+			dead.append(load_enemy_asset(i, type_="dead"))
 
 
-	return enemy_standing, walking, running, standing_shoot
+
+
+	return enemy_standing, walking, running, standing_shoot, hurt, dead
 
 
 def load_boost_textures():

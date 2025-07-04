@@ -8,7 +8,7 @@ pygame.init()
 
 class Enemy(Player):
 	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None):
-		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=None, death_textures=death_textures, standing_reload_textures=None)
+		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, standing_reload_textures=None)
 		self.shoot_dist = randint(MIN_ENEMY_SHOOT_DIST, MAX_ENEMY_SHOOT_DIST)
 		self.at_shoot_dist = False
 		self.flinged = False
@@ -16,7 +16,7 @@ class Enemy(Player):
 	def follow_player(self, player, ticks, bullet_texture):
 		dist_x = player.x - self.x
 
-		if self.flinged:
+		if self.flinged or self.hurt or self.health <= 0:
 			return
 
 		# if self.flinged:
@@ -28,7 +28,7 @@ class Enemy(Player):
 
 
 
-		if (abs(dist_x) >= player.get_width() + self.shoot_dist) or (self.x + self.get_width() + 10 > SCREEN_WIDTH):
+		if (abs(dist_x) >= player.get_width() + self.shoot_dist) or (self.x + self.get_width() + 10 > SCREEN_WIDTH) and player.health > 0:
 			self.at_shoot_dist = False
 			self.aimed_shot = False
 
@@ -55,9 +55,16 @@ class Enemy(Player):
 			self.at_shoot_dist = True
 			self.aiming = True
 			self.running = False
-			self.aimed_shot = True
+			if player.health > 0:
+				self.aimed_shot = True
 
-			if ticks % ENEMY_SHOOTING_COOLDOWN == 0:
+			else:
+				self.current_texture = self.aimed_shooting_textures[0]
+				self.aimed_shot = False
+
+				return None
+
+			if ticks % ENEMY_SHOOTING_COOLDOWN == 0 and player.health > 0:
 				bullet = Bullet(self.screen, (self.x, self.y + (self.get_height() // 4)), bullet_texture, flip=self.flipped, player_bullet=False)
 
 				# print (abs(round(self.x - player.x)))
@@ -78,6 +85,9 @@ class Enemy(Player):
 					return bullet 
 
 	def fling(self, player):
+		if self.health <= 0:
+			return
+
 		self.flinged = True
 		self.initial_x = self.x
 		self.initial_y = self.y
@@ -101,14 +111,17 @@ class Enemy(Player):
 		if self.flinged:
 			return
 
-		super().change_movement_texture(ticks)
+		super().change_movement_texture(ticks, enemy=True)
+
+		if self.hurt or self.dead:
+			return
 
 
 		if self.aiming and self.vel_x == 0:
 			if self.aiming_texture is not None:
 				self.current_texture = self.aiming_texture
 
-			if self.aimed_shot and ticks % ENEMY_SHOOT_ANIMATION_SPEED == 0:
+			if self.aimed_shot and ticks % ENEMY_SHOOT_ANIMATION_SPEED == 0 and player.health > 0:
 				self.current_texture = self.aimed_shooting_textures[self.animation_stages["aimed_shot"]]
 
 				self.animation_stages["aimed_shot"] += 1
@@ -131,7 +144,7 @@ class Enemy(Player):
 
 
 
-			if self.x > player.x:
+			if self.x > player.x + player.get_width():
 				self.flipped = True
 				self.current_texture = pygame.transform.flip(self.aimed_shooting_textures[self.animation_stages["aimed_shot"]], True, False)
 
