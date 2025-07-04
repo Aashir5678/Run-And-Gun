@@ -53,6 +53,7 @@ class Player:
 		self.attacking = False
 
 		self.in_animation = False
+		self.block_standing_on = None
 		self.ammo = ROUNDS_IN_MAG
 
 		self.blocks_travelled = 1
@@ -108,7 +109,11 @@ class Player:
 
 
 			if self.flipped and not enemy or (not self.flipped and enemy):
-				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+				# if not enemy:
+				# 	self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+
+				if self.animation_stages["death"] < len(self.death_textures):
+					self.current_texture = pygame.transform.flip(self.death_textures[self.animation_stages["death"]], True, False)
 
 
 			return
@@ -311,7 +316,7 @@ class Player:
 
 			if self.vel_x < 0:
 				# if isinstance(self, Enemy):
-				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+				self.current_texture = pygame.transform.flip(self.walking_textures[self.animation_stages["walk"]], True, False)
 				self.flipped = True
 
 			else:
@@ -339,7 +344,7 @@ class Player:
 
 
 			if self.vel_x < 0:
-				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+				self.current_texture = pygame.transform.flip(self.walking_textures[self.animation_stages["run"]], True, False)
 				self.flipped = True
 
 			else:

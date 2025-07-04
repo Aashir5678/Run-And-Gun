@@ -62,6 +62,9 @@ class Enemy(Player):
 				self.current_texture = self.aimed_shooting_textures[0]
 				self.aimed_shot = False
 
+				if self.flipped:
+					self.current_texture = pygame.transform.flip(self.aimed_shooting_textures[0], True, False)
+
 				return None
 
 			if ticks % ENEMY_SHOOTING_COOLDOWN == 0 and player.health > 0:
@@ -151,6 +154,9 @@ class Enemy(Player):
 			else:
 				self.flipped = False
 				self.current_texture = self.aimed_shooting_textures[self.animation_stages["aimed_shot"]]
+
+
+
 
 
 		# self.rect.x = self.x

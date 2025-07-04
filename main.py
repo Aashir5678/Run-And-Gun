@@ -155,6 +155,7 @@ def main(seed=None):
 			if (player.on_block(block) and player.vel_y > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks and not player.jumping:
 				player.y = block.y - player.get_height() # + 1
 				player.vel_y = 0
+				player.block_standing_on = block
 
 
 				# if player.jumping and (player.animation_stages["flip"] != 0 and player.animation_stages["flip"] != len(player.flip_textures) - 1):
@@ -183,10 +184,11 @@ def main(seed=None):
 				if (enemy.on_block(block) and enemy.vel_y > 0) or (abs(enemy.x - block.x) <= BLOCK_SIZE and abs(enemy.y - block.y) < enemy.get_height()) and block in surface_blocks:
 					enemy.y = block.y - enemy.get_height() + 1
 					enemy.vel_y = 0
-					if enemy.flinged:
+					if (enemy.flinged or not enemy.flipped) and enemy.health > 0:
 						enemy.flinged = False
 						enemy.at_shoot_dist = True
 						enemy.vel_x = 0
+						enemy.shoot_dist = enemy.x
 
 
 					# enemy.acc_y = 0
@@ -230,7 +232,7 @@ def main(seed=None):
 					enemy.aiming = False
 
 					if enemy.shoot_dist > enemy.get_width() + player.get_width() and player.health > 0:
-						enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x + player.get_width())))
+						enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x - player.get_width())))
 
 
 				
@@ -378,6 +380,8 @@ def main(seed=None):
 					enemy.vel_x = 0
 					enemy.shoot_dist = enemy.x
 
+
+
 		elif pygame.mouse.get_pressed()[0] and not pygame.mouse.get_pressed()[2] and player.ammo > 0 and not player.jumping and player.health > 0:
 			player.noaim_shooting = True
 
@@ -436,13 +440,13 @@ def main(seed=None):
 
 		if random.randint(0, odds) == 0 and surface_blocks and len(enemies) < MAX_ENEMIES_AT_ONCE:
 			print (f"1 in {str((odds + 1))} chance per frame")
-			random_block = choice(surface_blocks)
+			random_block = choice(surface_blocks[surface_blocks.index(player.block_standing_on)::])
 			
 			
-			if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
-				print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
-				print (f"Difficulty: {str(round(difficulty, 2))}")
-				enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures))
+			# if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
+			print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
+			print (f"Difficulty: {str(round(difficulty, 2))}")
+			enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures))
 
 
 
@@ -465,7 +469,7 @@ def main(seed=None):
 				return True
 
 
-		handle_player_stats(player)
+		handle_player_stats(player, raining=weather.raining)
 
 		health_bar.set_value(player.health)
 		stamina_bar.set_value(player.stamina)
@@ -480,6 +484,7 @@ def main(seed=None):
 
 		for enemy in enemies:
 			enemy.x -= scroll_speed
+
 			# print (f"{enemy.direction} and {str(enemy.flipped)}")
 			enemy.change_movement_texture(player, ticks)
 
@@ -517,7 +522,7 @@ def main(seed=None):
 
 			enemy.update()
 			
-			if enemy.x > 0 and enemy.x < SCREEN_WIDTH:
+			if enemy.x + enemy.get_width() > 0 and enemy.x < SCREEN_WIDTH:
 				enemy.draw()
 
 
@@ -698,7 +703,7 @@ def handle_movement(keys, player, ticks):
 		player.standing_reload = True
 
 		
-def handle_player_stats(player):
+def handle_player_stats(player, raining=False):
 	if player.stamina <= 0.05 and not player.running:
 		player.stamina += 0.01
 
@@ -713,16 +718,32 @@ def handle_player_stats(player):
 
 
 	if player.health <= 0.05 and not player.hurt and player.health > 0:
-		player.health += 0.01
+		if not raining:
+			player.health += 0.01
+
+		else:
+			player.health += 0.05
 
 	elif player.health < 1.0 and player.health > 0 and (player.sitting or player.lying):
-		player.health *= REGEN_FACTOR ** 4
+		if not raining:
+			player.health *= REGEN_FACTOR ** 4
+
+		else:
+			player.health *= REGEN_FACTOR ** 4.5
 
 	elif player.health < 1.0 and player.health > 0 and player.vel_x == 0 and not player.hurt:
-		player.health *= REGEN_FACTOR ** 3
+		if not raining:
+			player.health *= REGEN_FACTOR ** 3
+
+		else:
+			player.health *= REGEN_FACTOR ** 3.5
 
 	elif player.health < 1.0 and player.health > 0:
-		player.health *= REGEN_FACTOR
+		if not raining:
+			player.health *= REGEN_FACTOR
+
+		else:
+			player.health *= REGEN_FACTOR ** 1.5
 
 
 
