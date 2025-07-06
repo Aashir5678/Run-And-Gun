@@ -1,7 +1,7 @@
 import pygame
 from random import randint, choice
 from sprites.player import Player, Bullet
-from sprites.enemy import Enemy
+from sprites.enemy import *
 from utilities.map_generator import *
 from utilities.constants import *
 from utilities.asset_loader import *
@@ -55,7 +55,7 @@ def main(seed=None):
 	ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(bullet_texture, 90), 3)
 	empty_ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(empty_bullet_texture, 90), 3)
 
-	enemy_standing_texture, enemy_walking_textures, enemy_running_textures, enemy_standing_shooting_textures, enemy_hurt_textures, enemy_dead_textures = load_enemy_assets()
+	enemy_standing_texture, enemy_walking_textures, enemy_running_textures, enemy_standing_shooting_textures, enemy_hurt_textures, enemy_dead_textures, enemy_grenade_textures = load_enemy_assets()
 	# print (len(enemy_walking_textures))
 	bullets = []
 
@@ -83,6 +83,8 @@ def main(seed=None):
 	surface_blocks, blocks = generate_new_terrain(screen, noise_num, seed, HEIGHT_FACTOR)
 	clock = pygame.time.Clock()
 	ticks = 0
+	grenade = None
+
 
 	player = Player(screen, 0, surface_blocks[0].y - still_player_texture.get_height(), still_player_texture, walking_textures, aim_texture, sitting_shooting_textures=sitting_shooting_textures, lying_player_texture=lying_player_texture, sitting_player_texture=sitting_player_texture, flip_textures=flip_textures, running_textures=running_textures, aimed_shooting_textures=aimed_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, noaim_shooting_textures=no_aim_shooting_textures, standing_reload_textures=standing_reload_textures, attack_textures=attack_textures)
 	print (f"Seed: {str(seed)}")
@@ -95,10 +97,11 @@ def main(seed=None):
 		# if not music_channel.get_busy():
 		# 	music_channel.queue(song)
 		# print (int(player.blocks_travelled))
+		clock.tick(FPS)
+
 		player.blocks_travelled += scroll_speed / BLOCK_SIZE
 
 		ticks += 1
-		clock.tick(FPS)
 		draw_background(screen, player, ticks, scroll_speed, weather)
 
 		pygame.display.set_caption(str(round(clock.get_fps())))
@@ -198,6 +201,8 @@ def main(seed=None):
 						enemy.current_texture = enemy.still_texture
 						enemy.animation_stages["walk"] = 0
 						enemy.animation_stages["run"] = 0
+
+
 
 
 		for i, bullet in enumerate(bullets):
@@ -446,7 +451,13 @@ def main(seed=None):
 			# if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
 			print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
 			print (f"Difficulty: {str(round(difficulty, 2))}")
-			# enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures))
+
+			enemy = Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures, enemy_grenade_textures=enemy_grenade_textures)
+			enemies.append(enemy)
+
+			# if grenade is None:
+			# 	grenade = Grenade(screen, player, 6)
+			# 	grenade.find_trajectory(enemy)
 
 
 
@@ -485,6 +496,9 @@ def main(seed=None):
 		for enemy in enemies:
 			enemy.x -= scroll_speed
 
+			if enemy.grenade is not None:
+				enemy.grenade.x -= scroll_speed
+
 			# print (f"{enemy.direction} and {str(enemy.flipped)}")
 			enemy.change_movement_texture(player, ticks)
 
@@ -500,10 +514,15 @@ def main(seed=None):
 				bullets.append(bullet)
 
 
+
+			throwing_grenade = random.randint(0, ENEMY_GRENADE_THROW_CHANCE - (int(difficulty) * DIFFICULTY_MULTIPLIER))
+
 			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK:
 				enemy.aimed_shot = False
 				enemy.take_damage()
 				enemy.fling(player)
+				enemy.throwing_grenade = False
+
 
 				# # Possibly add fling with an angle upwards
 				# if player.x > enemy.x:
@@ -520,6 +539,38 @@ def main(seed=None):
 				# 	else:
 				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
+			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and not enemy.throwing_grenade:
+				enemy.throwing_grenade = True
+				enemy.aimed_shot = False
+				enemy.aiming = False
+
+
+			if enemy.grenade is not None:
+				# enemy.grenade.update()
+				# enemy.grenade.draw()
+
+
+				if enemy.grenade.hit_entity(player):
+					player.hurt = True
+					player.health -= GRENADE_DAMAGE
+					enemy.grenade.explode = True
+
+					enemy.grenade = None
+
+
+				else:
+
+					for block in blocks:
+						if enemy.grenade.hit_entity(block):
+
+							if enemy.grenade.distance_from_entity(player) <= GRENADE_RADIUS:
+								player.hurt = True
+								player.health -= GRENADE_DAMAGE
+
+							enemy.grenade = None
+							break
+
+
 			enemy.update()
 			
 			if enemy.x + enemy.get_width() > 0 and enemy.x < SCREEN_WIDTH:
@@ -528,6 +579,15 @@ def main(seed=None):
 
 		player.update()
 		player.draw()
+
+		if grenade is not None:
+			# grenade.update(dt)
+
+			if grenade.y > SCREEN_HEIGHT:
+				grenade = None
+				continue
+
+			grenade.draw()
 
 		for boost in boosts:
 			if boost.hit_player(player):

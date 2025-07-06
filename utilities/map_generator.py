@@ -72,9 +72,9 @@ class Block:
 		self.rect.y = y
 
 
-	def distance_from_block(self, block):
-		dist_x = abs(self.center_x - block.center_x)
-		dist_y = abs(self.center_y - block.center_y)
+	def distance_from_entity(self, entity):
+		dist_x = abs(self.x - entity.x)
+		dist_y = abs(self.y - entity.y)
 
 		euclid_dist = sqrt(dist_x ** 2 + dist_y ** 2)
 		return euclid_dist

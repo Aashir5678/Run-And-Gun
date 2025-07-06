@@ -51,6 +51,7 @@ class Player:
 		self.dead = False
 		self.sliding = False
 		self.attacking = False
+		self.throwing_grenade = False
 
 		self.in_animation = False
 		self.block_standing_on = None
@@ -149,6 +150,10 @@ class Player:
 
 
 		elif self.hurt:
+			return
+
+
+		if enemy and self.throwing_grenade:
 			return
 
 
@@ -344,7 +349,7 @@ class Player:
 
 
 			if self.vel_x < 0:
-				self.current_texture = pygame.transform.flip(self.walking_textures[self.animation_stages["run"]], True, False)
+				self.current_texture = pygame.transform.flip(self.running_textures[self.animation_stages["run"]], True, False)
 				self.flipped = True
 
 			else:
@@ -494,7 +499,6 @@ class Player:
 		# print (self.vel_y)
 		self.vel_y += self.acc_y
 		self.x += self.vel_x
-
 		self.y += self.vel_y
 
 		if self.vel_x != 0:

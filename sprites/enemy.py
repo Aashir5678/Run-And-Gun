@@ -1,22 +1,31 @@
 from .player import Player, Bullet
+from utilities.map_generator import Block
 from utilities.constants import *
 from random import randint, uniform
+from math import sqrt
 import pygame
 
 pygame.init()
+GRENADE_TEXTURE = pygame.transform.scale_by(pygame.image.load("Assets//grenade.png"), 0.7)
 
 
 class Enemy(Player):
-	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None):
+	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None, enemy_grenade_textures=None):
 		super().__init__(screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=running_textures, flip_textures=flip_textures, aimed_shooting_textures=aimed_shooting_textures, noaim_shooting_textures=noaim_shooting_textures, hurt_textures=hurt_textures, death_textures=death_textures, standing_reload_textures=None)
 		self.shoot_dist = randint(MIN_ENEMY_SHOOT_DIST, MAX_ENEMY_SHOOT_DIST)
+		self.enemy_grenade_textures = enemy_grenade_textures
+
+
+		self.animation_stages["grenade"] = 0
+		self.throwing_grenade = False
 		self.at_shoot_dist = False
 		self.flinged = False
+		self.grenade = None
 
 	def follow_player(self, player, ticks, bullet_texture):
 		dist_x = player.x - self.x
 
-		if self.flinged or self.hurt or self.health <= 0:
+		if self.flinged or self.hurt or self.health <= 0 or self.throwing_grenade:
 			return
 
 		# if self.flinged:
@@ -120,6 +129,35 @@ class Enemy(Player):
 			return
 
 
+		if self.throwing_grenade and ticks % ENEMY_GRENADE_ANIMATION_SPEED == 0:
+			self.aiming = False
+			self.vel_x = 0
+
+			self.current_texture = self.enemy_grenade_textures[self.animation_stages["grenade"]]
+
+
+			self.animation_stages["grenade"] += 1
+
+			if self.animation_stages["grenade"] >= len(self.enemy_grenade_textures):
+				self.animation_stages["grenade"] = 0
+				self.throwing_grenade = False
+
+			elif self.animation_stages["grenade"] == 7:
+				self.grenade = Grenade(self.screen, self)
+				self.grenade.find_trajectory(player)
+
+			if self.x > player.x + player.get_width():
+				self.flipped = True
+				self.current_texture = pygame.transform.flip(self.enemy_grenade_textures[self.animation_stages["grenade"]], True, False)
+
+			else:
+				self.flipped = False
+				self.current_texture = self.enemy_grenade_textures[self.animation_stages["grenade"]]
+
+
+		elif self.throwing_grenade:
+			return
+
 		if self.aiming and self.vel_x == 0:
 			if self.aiming_texture is not None:
 				self.current_texture = self.aiming_texture
@@ -163,3 +201,73 @@ class Enemy(Player):
 		# self.rect.y = self.y
 
 		# 
+
+	def update(self):
+		super().update()
+
+		if self.grenade is not None:
+			self.grenade.update()
+
+
+	def draw(self):
+		super().draw()
+
+		if self.grenade is not None:
+			self.grenade.draw()
+
+
+
+
+class Grenade:
+	def __init__(self, screen, user):
+		self.screen = screen
+		self.x = user.x
+		self.y = user.y
+		self.vel_x = 0
+		self.vel_y = 0
+		self.explode = False
+
+		self.user = user
+		self.current_texture = GRENADE_TEXTURE
+		self.rect = self.current_texture.get_rect()
+
+	def find_trajectory(self, player):
+
+		time = randint(FPS // 2, FPS * 5)
+
+		self.vel_x = (player.x - self.x) / time
+
+		self.vel_y = (((player.y - self.y) / time) - 0.5 * GRAVITY * time)
+
+
+
+	def hit_entity(self, entity):
+		to_right_of_entity = self.x > entity.x
+		dist_x = abs(self.x - entity.x)
+		dist_y = abs(self.y - entity.y)
+
+		return ((to_right_of_entity and dist_x <= entity.get_width()) or (dist_x <= self.current_texture.get_width())) and dist_y <= self.current_texture.get_height()
+
+	def distance_from_entity(self, entity):
+		dist_x = abs(self.x - entity.x)
+		dist_y = abs(self.y - entity.y)
+
+		euclid_dist = sqrt(dist_x ** 2 + dist_y ** 2)
+		return euclid_dist
+
+
+	def update(self):
+		# print (self.x)
+		# print (self.y)
+		self.vel_y += GRAVITY
+		self.x += self.vel_x
+		self.y += self.vel_y
+
+
+
+
+	def draw(self):
+		self.screen.blit(self.current_texture, (self.x, self.y))
+
+		# if self.grenade is not None:
+		# 	self.screen.blit(self.grenade.current_texture, (self.grenade.x, self.grenade.y))
