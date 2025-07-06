@@ -446,7 +446,7 @@ def main(seed=None):
 			# if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
 			print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
 			print (f"Difficulty: {str(round(difficulty, 2))}")
-			enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures))
+			# enemies.append(Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures))
 
 
 
@@ -530,22 +530,42 @@ def main(seed=None):
 		player.draw()
 
 		for boost in boosts:
-			if boost.hit_player(player) and boost.type == "health":
-				player.health += HEALTH_BOOST
-				if player.health > 1.0:
-					player.health = 1.0
-
+			if boost.hit_player(player):
 				boosts.remove(boost)
 
-				continue
+				if boost.type == "health":
+					player.health += HEALTH_BOOST
+					if player.health > 1.0:
+						player.health = 1.0
 
-			elif boost.hit_player(player) and boost.type == "stamina":
-				player.stamina += STAMINA_BOOST
+					continue
 
-				if player.stamina > 1.0:
-					player.stamina = 1.0
+				else:
+					player.stamina += STAMINA_BOOST
 
+					if player.stamina > 1.0:
+						player.stamina = 1.0
+
+
+
+			elif not boost.alive():
 				boosts.remove(boost)
+
+
+			# if boost.hit_player(player) and boost.type == "health":
+			# 	player.health += HEALTH_BOOST
+			# 	if player.health > 1.0:
+			# 		player.health = 1.0
+
+			# 	continue
+
+			# elif boost.hit_player(player) and boost.type == "stamina":
+			# 	player.stamina += STAMINA_BOOST
+
+			# 	if player.stamina > 1.0:
+			# 		player.stamina = 1.0
+
+			# 	boosts.remove(boost)
 
 			boost.update(scroll_speed)
 			boost.draw()

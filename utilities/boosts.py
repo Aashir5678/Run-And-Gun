@@ -6,6 +6,7 @@ class Boost:
 		self.screen = screen
 		self.x = x
 		self.start_y = y
+		self.ticks_alive = 0
 
 		self.y = self.start_y
 		self.image = image
@@ -23,9 +24,13 @@ class Boost:
 	def hit_player(self, player):
 		return self.rect.colliderect(player.rect) or ((abs(self.x - player.x) < player.get_width()) and abs(self.y - player.y) < player.get_height())
 
+	def alive(self):
+		return self.ticks_alive < BOOST_LIFESPAN
+
 	def update(self, scroll_speed):
 		self.x -= scroll_speed
 		self.y += self.vel_y
+		self.ticks_alive += 1
 
 		if self.y >= (self.image.get_height() / 3) + self.start_y:
 			self.vel_y = -BOOST_FLOAT_SPEED
