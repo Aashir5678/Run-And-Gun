@@ -125,8 +125,8 @@ def main(seed=None):
 
 
 		for block in surface_blocks:
-			spawn_health_boost = randint(0, HEALTH_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
-			spawn_stamina_boost = randint(0, STAMINA_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
+			spawn_health_boost = randint(0, HEALTH_BOOST_SPAWN_RATE) #   + int(difficulty * DIFFICULTY_MULTIPLIER)
+			spawn_stamina_boost = randint(0, STAMINA_BOOST_SPAWN_RATE) # + int(difficulty * DIFFICULTY_MULTIPLIER)
 
 			if spawn_health_boost == 0 and player.health < 1.0 and len(boosts) < 10:
 				health = Boost(screen, block.x, block.y - (heart_texture.get_height() * 4 / 3), heart_texture, "health")
@@ -155,8 +155,9 @@ def main(seed=None):
 					surface_blocks.remove(block)
 
 
+
 			# Prevents player from sinking in to the floor
-			if (player.on_block(block) and player.vel_y > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks and not player.jumping:
+			if (player.on_block(block) and (player.vel_y) > 0) or (abs(player.x - block.x) <= BLOCK_SIZE and abs(player.y - block.y) < player.get_height()) and block in surface_blocks and not player.jumping:
 				player.y = block.y - player.get_height() # + 1
 				player.vel_y = 0
 				player.block_standing_on = block

@@ -104,6 +104,7 @@ class Enemy(Player):
 
 	def fling(self, player):
 		if self.health <= 0:
+			self.flinged = False
 			return
 
 		self.flinged = True
@@ -112,7 +113,10 @@ class Enemy(Player):
 		self.current_texture = self.still_texture
 
 		if self.flipped:
-			self.current_texture = pygame.transform.flip(self.current_texture, True, False)
+			self.current_texture = pygame.transform.flip(self.still_texture, True, False)
+
+		# else:
+		# 	self.current_texture = self.still_texture
 
 		if self.x < player.x:
 			self.vel_x = uniform(-BLOCK_SIZE * FLING_CONSTANT, 0)
@@ -126,10 +130,12 @@ class Enemy(Player):
 
 
 	def change_movement_texture(self, player, ticks):
-		if self.flinged:
+		if self.flinged and self.health > 0:
 			return
 
 		super().change_movement_texture(ticks, enemy=True)
+
+
 
 		if self.hurt or self.dead:
 			return
@@ -191,7 +197,7 @@ class Enemy(Player):
 
 
 
-			if self.x > player.x + player.get_width():
+			if self.x > player.x + player.get_width() - ATTACK_RANGE:
 				self.flipped = True
 				self.current_texture = pygame.transform.flip(self.aimed_shooting_textures[self.animation_stages["aimed_shot"]], True, False)
 

@@ -364,7 +364,6 @@ class Player:
 
 			if self.animation_stages["flip"] >= len(self.flip_textures):
 				self.jumping = False
-				print ("not jumping")
 				self.animation_stages["flip"] = 0
 
 
@@ -373,7 +372,9 @@ class Player:
 
 
 		self.rect = self.current_texture.get_rect()
-		self.ticks_since_attack += 1
+		if not self.attacking:
+			self.ticks_since_attack += 1
+
 		self.rect.x = self.x
 		self.rect.y = self.y
 
@@ -461,10 +462,10 @@ class Player:
 
 
 
-		diff_x = abs(block.block_rect.x - self.rect.x)
-		diff_y = abs(block.block_rect.y - self.rect.y)
+		diff_x = abs(block.x - self.rect.x)
+		diff_y = abs(block.y - self.rect.y)
 
-		if self.rect.x > block.block_rect.x:
+		if self.rect.x > block.x:
 			width = BLOCK_SIZE
 
 		else:
@@ -495,10 +496,18 @@ class Player:
 		if self.health > 1.0:
 			self.health = 1.0
 
+			 # -27.8173
+			 # 0.4
+
 
 		# print (self.vel_y)
 		self.vel_y += self.acc_y
+
+		# print (self.acc_y)
 		self.x += self.vel_x
+
+		# if abs(self.y - (self.y + self.vel_y)) > 200:
+		# 	print (f"ERROR: vel y: {str(self.vel_y)}")
 		self.y += self.vel_y
 
 		if self.vel_x != 0:
