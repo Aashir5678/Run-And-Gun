@@ -8,6 +8,12 @@ import pygame
 pygame.init()
 GRENADE_TEXTURE = pygame.transform.scale_by(pygame.image.load("Assets//grenade.png"), 0.7)
 
+EXPLOSION_TEXTURES = []
+
+for i in range(1, 10):
+	texture = pygame.transform.scale_by(pygame.image.load(f"Assets//enemy_grenade//explosion{str(i)}.png"), 2)
+	EXPLOSION_TEXTURES.append(texture)
+
 
 class Enemy(Player):
 	def __init__(self, screen, x, y, still_texture, walking_textures, aiming_texture, running_textures=None, flip_textures=None, aimed_shooting_textures=None, noaim_shooting_textures=None, hurt_textures=None, death_textures=None, standing_reload_textures=None, enemy_grenade_textures=None):
@@ -84,7 +90,7 @@ class Enemy(Player):
 				
 				if not player.jumping and not player.running:
 					innacuarte_x = player.x + randint(-ENEMY_INNACURACY + distance_innaccuracy, ENEMY_INNACURACY + distance_innaccuracy)
-					innacuarte_y = player.y + (player.get_height() / 2) + randint(-ENEMY_INNACURACY + distance_innaccuracy, ENEMY_INNACURACY + distance_innaccuracy)
+					innacuarte_y = player.y + randint(-ENEMY_INNACURACY + distance_innaccuracy, ENEMY_INNACURACY + distance_innaccuracy) # + (player.get_height() / 2) 
 
 				else:
 					innacuarte_x = player.x + uniform(-ENEMY_INNACURACY * 1.5, ENEMY_INNACURACY * 1.5)
@@ -202,11 +208,14 @@ class Enemy(Player):
 
 		# 
 
-	def update(self):
+	def update(self, ticks):
 		super().update()
 
 		if self.grenade is not None:
-			self.grenade.update()
+			still_exploding = self.grenade.update(ticks)
+
+			if not still_exploding:
+				self.grenade = None
 
 
 	def draw(self):
@@ -229,13 +238,27 @@ class Grenade:
 
 		self.user = user
 		self.current_texture = GRENADE_TEXTURE
+		self.explosion_textures = EXPLOSION_TEXTURES
+		self.explosion_index = 0
 		self.rect = self.current_texture.get_rect()
+
+	def get_height(self):
+		return self.current_texture.get_height()
 
 	def find_trajectory(self, player):
 
-		time = randint(FPS // 2, FPS * 5)
+		time = randint(FPS // 2, FPS * 2)
+		x = player.x
 
-		self.vel_x = (player.x - self.x) / time
+		if player.x > 0:
+			x += randint(0, ENEMY_GRENADE_INNACURACY)
+
+		elif player.x < 0:
+			x += player.x + randint(-ENEMY_GRENADE_INNACURACY, 0)
+
+
+
+		self.vel_x = (x - self.x) / time
 
 		self.vel_y = (((player.y - self.y) / time) - 0.5 * GRAVITY * time)
 
@@ -256,14 +279,29 @@ class Grenade:
 		return euclid_dist
 
 
-	def update(self):
+	def update(self, ticks):
 		# print (self.x)
 		# print (self.y)
-		self.vel_y += GRAVITY
-		self.x += self.vel_x
-		self.y += self.vel_y
+		if not self.explode:
+			self.vel_y += GRAVITY
+			self.x += self.vel_x
+			self.y += self.vel_y
 
 
+		elif ticks % EXPLODE_ANIMATION_SPEED == 0:
+			self.current_texture = self.explosion_textures[self.explosion_index]
+
+			self.explosion_index += 1
+
+			if self.explosion_index >= len(self.explosion_textures):
+				self.explosion_index = 0
+				self.explode = False
+
+				return False
+
+
+
+		return True
 
 
 	def draw(self):

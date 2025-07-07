@@ -65,6 +65,7 @@ def main(seed=None):
 
 	boosts = []
 	difficulty = 0
+	enemies_killed = 0
 
 	rain_freq = 10
 	rain_speed = 20
@@ -124,8 +125,8 @@ def main(seed=None):
 
 
 		for block in surface_blocks:
-			spawn_health_boost = random.randint(0, HEALTH_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
-			spawn_stamina_boost = random.randint(0, STAMINA_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
+			spawn_health_boost = randint(0, HEALTH_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
+			spawn_stamina_boost = randint(0, STAMINA_BOOST_SPAWN_RATE + int(difficulty * DIFFICULTY_MULTIPLIER))
 
 			if spawn_health_boost == 0 and player.health < 1.0 and len(boosts) < 10:
 				health = Boost(screen, block.x, block.y - (heart_texture.get_height() * 4 / 3), heart_texture, "health")
@@ -237,7 +238,7 @@ def main(seed=None):
 					enemy.aiming = False
 
 					if enemy.shoot_dist > enemy.get_width() + player.get_width() and player.health > 0:
-						enemy.shoot_dist -= random.randint(0, abs(round(enemy.x - player.x - player.get_width())))
+						enemy.shoot_dist -= randint(0, abs(round(enemy.x - player.x - player.get_width())))
 
 
 				
@@ -266,8 +267,8 @@ def main(seed=None):
 			bullet = Bullet(screen, (player.x, player.y + (player.get_height() // 4)), bullet_texture, flip=player.flipped)
 
 			if not player.sitting:
-				mx += random.randint(-AIMED_ACCURACY, AIMED_ACCURACY)
-				my += random.randint(-AIMED_ACCURACY, AIMED_ACCURACY)
+				mx += randint(-AIMED_ACCURACY, AIMED_ACCURACY)
+				my += randint(-AIMED_ACCURACY, AIMED_ACCURACY)
 
 			valid_bullet = bullet.set_vel(mx, my)
 
@@ -429,7 +430,7 @@ def main(seed=None):
 			player.stamina = 1.0
 
 
-		# Difficulty increases every BLOCKS_TILL_DIFFICULTY_INCREASE blocks travelled
+		# Difficulty increases by 1.0 every BLOCKS_TILL_DIFFICULTY_INCREASE blocks travelled
 
 		if player.blocks_travelled / BLOCKS_TILL_DIFFICULTY_INCREASE > difficulty:
 			difficulty = player.blocks_travelled / BLOCKS_TILL_DIFFICULTY_INCREASE
@@ -443,11 +444,20 @@ def main(seed=None):
 			odds = MAX_SPAWN_RATE
 		
 
-		if random.randint(0, odds) == 0 and surface_blocks and len(enemies) < MAX_ENEMIES_AT_ONCE:
+		if randint(0, odds) == 0 and surface_blocks and len(enemies) < MAX_ENEMIES_AT_ONCE:
 			print (f"1 in {str((odds + 1))} chance per frame")
-			random_block = choice(surface_blocks[surface_blocks.index(player.block_standing_on)::])
+
+			min_dist_block = None
+
+			for block in surface_blocks:
+				dist_x = block.x - player.x
+				if dist_x >= MIN_ENEMY_SPAWN_DIST:
+					min_dist_block = block
+					break
+
+			random_block = choice(surface_blocks[surface_blocks.index(min_dist_block)::])
 			
-			
+
 			# if random_block.x > player.x + MIN_ENEMY_SPAWN_DIST and random_block.x < MAX_ENEMY_SPAWN_DIST:
 			print (f"Distance to enemy: {str(round(random_block.x - player.x))}")
 			print (f"Difficulty: {str(round(difficulty, 2))}")
@@ -507,6 +517,7 @@ def main(seed=None):
 
 			if enemy.dead:
 				enemies.remove(enemy)
+				enemies_killed += 1
 				continue
 
 
@@ -515,7 +526,7 @@ def main(seed=None):
 
 
 
-			throwing_grenade = random.randint(0, ENEMY_GRENADE_THROW_CHANCE - (int(difficulty) * DIFFICULTY_MULTIPLIER))
+			throwing_grenade = randint(0, ENEMY_GRENADE_THROW_CHANCE - (int(difficulty) * DIFFICULTY_MULTIPLIER))
 
 			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK:
 				enemy.aimed_shot = False
@@ -539,13 +550,13 @@ def main(seed=None):
 				# 	else:
 				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
-			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and not enemy.throwing_grenade:
+			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and enemy.grenade is None and enemies_killed >= 5:
 				enemy.throwing_grenade = True
 				enemy.aimed_shot = False
 				enemy.aiming = False
 
 
-			if enemy.grenade is not None:
+			if enemy.grenade is not None and not enemy.grenade.explode:
 				# enemy.grenade.update()
 				# enemy.grenade.draw()
 
@@ -553,27 +564,34 @@ def main(seed=None):
 				if enemy.grenade.hit_entity(player):
 					player.hurt = True
 					player.health -= GRENADE_DAMAGE
+					enemy.grenade.y -= enemy.grenade.explosion_textures[0].get_height()
+					enemy.grenade.x -= (enemy.grenade.explosion_textures[0].get_width()) / 2
 					enemy.grenade.explode = True
 
-					enemy.grenade = None
+					# enemy.grenade = None
 
 
 				else:
 
-					for block in blocks:
+					for block in surface_blocks:
 						if enemy.grenade.hit_entity(block):
 
 							if enemy.grenade.distance_from_entity(player) <= GRENADE_RADIUS:
 								player.hurt = True
 								player.health -= GRENADE_DAMAGE
 
-							enemy.grenade = None
+							enemy.grenade.explode = True
+
+							# enemy.grenade.x = block.x + BLOCK_SIZE // 2
+							enemy.grenade.y = block.y - enemy.grenade.explosion_textures[0].get_height()
+							enemy.grenade.x = block.x - (enemy.grenade.explosion_textures[0].get_width() / 2)
+							# enemy.grenade = None
 							break
 
 
-			enemy.update()
+			enemy.update(ticks)
 			
-			if enemy.x + enemy.get_width() > 0 and enemy.x < SCREEN_WIDTH:
+			if (enemy.x + enemy.get_width() > 0 and enemy.x < SCREEN_WIDTH) or (enemy.grenade is not None):
 				enemy.draw()
 
 
