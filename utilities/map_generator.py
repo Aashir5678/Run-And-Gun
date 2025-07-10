@@ -116,7 +116,8 @@ def generate_noise_map(octaves=4, seed=1, start=0, end=0):
 	noise = PerlinNoise(octaves=octaves, seed=seed)
 	noise_map = []
 	for spec in range(start, end + 1):
-		noise_map.append(abs(noise(spec/(1000))))
+		# noise_map.append(abs(noise(spec/(1000))))
+		noise_map.append(abs(noise(spec/1000)))
 
 	return noise_map
 

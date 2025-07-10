@@ -1,5 +1,6 @@
 import pygame
 from random import randint, choice
+from math import sqrt
 from sprites.player import Player, Bullet
 from sprites.enemy import *
 from utilities.map_generator import *
@@ -551,7 +552,7 @@ def main(seed=None):
 				# 	else:
 				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
-			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and enemy.grenade is None and enemies_killed >= 5:
+			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and enemy.grenade is None and enemies_killed >= 4:
 				enemy.throwing_grenade = True
 				enemy.aimed_shot = False
 				enemy.aiming = False
@@ -564,7 +565,6 @@ def main(seed=None):
 
 				if enemy.grenade.hit_entity(player):
 					player.hurt = True
-					player.health -= GRENADE_DAMAGE
 					enemy.grenade.y -= enemy.grenade.explosion_textures[0].get_height()
 					enemy.grenade.x -= (enemy.grenade.explosion_textures[0].get_width()) / 2
 					enemy.grenade.explode = True
@@ -577,10 +577,6 @@ def main(seed=None):
 					for block in surface_blocks:
 						if enemy.grenade.hit_entity(block):
 
-							if enemy.grenade.distance_from_entity(player) <= GRENADE_RADIUS:
-								player.hurt = True
-								player.health -= GRENADE_DAMAGE
-
 							enemy.grenade.explode = True
 
 							# enemy.grenade.x = block.x + BLOCK_SIZE // 2
@@ -588,6 +584,26 @@ def main(seed=None):
 							enemy.grenade.x = block.x - (enemy.grenade.explosion_textures[0].get_width() / 2)
 							# enemy.grenade = None
 							break
+
+			elif enemy.grenade is not None and enemy.grenade.explode:
+				if enemy.grenade.hit_entity(player):
+					player.hurt = True
+					player.health -= MAX_GRENADE_DAMAGE
+
+				elif enemy.grenade.distance_from_entity(player) <= GRENADE_RADIUS:
+					player.hurt = True
+
+
+					if enemy.grenade.x < player.x:
+						dist = abs(player.x - enemy.grenade.x)
+
+					else:
+						dist = abs(player.x - enemy.grenade.x  + player.get_width())
+
+					
+					damage = (- MAX_GRENADE_DAMAGE *  dist / (GRENADE_RADIUS)) + MAX_GRENADE_DAMAGE
+					player.health -= damage
+
 
 
 			enemy.update(ticks)

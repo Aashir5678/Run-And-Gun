@@ -271,6 +271,9 @@ class Grenade:
 
 
 	def hit_entity(self, entity):
+		if isinstance(entity, Player) and entity.health <= 0:
+			return False
+
 		to_right_of_entity = self.x > entity.x
 		dist_x = abs(self.x - entity.x)
 		dist_y = abs(self.y - entity.y)

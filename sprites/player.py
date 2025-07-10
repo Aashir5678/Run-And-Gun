@@ -86,7 +86,6 @@ class Player:
 			self.ticks_since_death += 1
 			self.vel_x = 0
 			self.vel_y = 0
-			self.animation_stages["death"] += 1
 
 			if self.ticks_since_death >= 5 * FPS:
 				self.dead = True
@@ -117,6 +116,7 @@ class Player:
 					self.current_texture = pygame.transform.flip(self.death_textures[self.animation_stages["death"]], True, False)
 
 
+			self.animation_stages["death"] += 1
 			return
 
 		elif self.health <= 0:
@@ -127,7 +127,6 @@ class Player:
 		# Hurt
 
 		elif not enemy and self.hurt and ticks % HURT_ANIMATION_SPEED == 0 or (enemy and self.hurt and ticks % ENEMY_HURT_ANIMATION_SPEED == 0):
-			self.animation_stages["hurt"] += 1
 
 			if self.animation_stages["hurt"] == len(self.hurt_textures):
 				self.animation_stages["hurt"] = 0
@@ -146,6 +145,7 @@ class Player:
 			if self.sliding:
 				self.handle_slide(raining=raining)
 
+			self.animation_stages["hurt"] += 1
 			return
 
 
@@ -191,6 +191,7 @@ class Player:
 				self.animation_stages["standing_reload"] = 0
 				self.standing_reload = False
 				self.ammo = ROUNDS_IN_MAG
+				pygame.time.delay(50)
 
 
 
@@ -309,13 +310,12 @@ class Player:
 		if self.vel_x != 0 and not self.running and ticks % WALK_ANIMATION_SPEED == 0 and not self.jumping:
 			self.stamina -= STAMINA_TO_WALK
 
-			self.animation_stages["walk"] += 1
-
 			if self.animation_stages["walk"] >= len(self.walking_textures):
 				self.animation_stages["walk"] = 0
 
-
 			self.current_texture = self.walking_textures[self.animation_stages["walk"]]
+
+			
 
 			# Flip texture if walking backwards
 
@@ -326,6 +326,8 @@ class Player:
 
 			else:
 				self.flipped = False
+
+			self.animation_stages["walk"] += 1
 
 
 		elif self.vel_x == 0 and not self.jumping:
@@ -340,7 +342,6 @@ class Player:
 
 		if self.vel_x != 0 and self.running and ticks % SPRINT_ANIMATION_SPEED == 0 and not self.jumping:
 			self.stamina -= STAMINA_TO_RUN
-			self.animation_stages["run"] += 1
 
 			if self.animation_stages["run"] >= len(self.running_textures):
 				self.animation_stages["run"] = 0
@@ -355,21 +356,23 @@ class Player:
 			else:
 				self.flipped = False
 
+			self.animation_stages["run"] += 1
+
 
 		# Flipping
 
 		if self.jumping and self.flip_textures is not None and ticks % FLIP_ANIMATION_SPEED == 0:
-			self.current_texture = self.flip_textures[self.animation_stages["flip"]]
-			self.animation_stages["flip"] += 1
 
 			if self.animation_stages["flip"] >= len(self.flip_textures):
 				self.jumping = False
 				self.animation_stages["flip"] = 0
 
+			self.current_texture = self.flip_textures[self.animation_stages["flip"]]
 
 			if self.flipped:
 				self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 
+			self.animation_stages["flip"] += 1
 
 		self.rect = self.current_texture.get_rect()
 		if not self.attacking:

@@ -7,13 +7,13 @@ pygame.init()
 pygame.mixer.init()
 
 
-RAIN_WIDTH = 2 # 3
+RAIN_WIDTH = 2 # 2
 RAIN_HEIGHT = 7
 RAIN_BLUE = (100, 100, 200)
 MIN_RAIN_SPEED = 7
 MAX_RAIN_SPEED = 12 
 MAX_RAIN_FREQ = 15 # 15, Controls the number of rain drops per frame on average, larger frequency means lighter rain, smaller frequency means harder rain
-RAIN_CHANCE = FPS * 20 # Chance that it will randomly start raining every tick
+RAIN_CHANCE = FPS * 50 # Chance that it will randomly start raining every tick
 MAX_RAIN_DURATION = FPS * 90
 TRANSITION_TO_RAIN = 15
 
@@ -149,7 +149,7 @@ class Weather:
 
 	def handle_rain(self):
 		if not self.raining and randint(0, RAIN_CHANCE) == 0 and not self.in_transition:
-			self.rain_freq = randint(2, MAX_RAIN_FREQ)
+			self.rain_freq = randint(3, MAX_RAIN_FREQ)
 			# self.rain_freq = 2
 
 			self.thunder_freq = (self.rain_freq * FPS * 4) # Range: Every 4 seconds to 1 minute
