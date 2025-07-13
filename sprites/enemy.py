@@ -31,7 +31,7 @@ class Enemy(Player):
 	def follow_player(self, player, ticks, bullet_texture):
 		dist_x = player.x - self.x
 
-		if self.flinged or self.hurt or self.health <= 0 or self.throwing_grenade:
+		if self.flinged or self.hurt or self.health <= 0 or self.dead or self.throwing_grenade:
 			return
 
 		# if self.flinged:
@@ -103,17 +103,19 @@ class Enemy(Player):
 					return bullet 
 
 	def fling(self, player):
-		if self.health <= 0:
-			self.flinged = False
-			return
+		# if self.health <= 0:
+		# 	self.flinged = False
+		# 	return
 
 		self.flinged = True
 		self.initial_x = self.x
 		self.initial_y = self.y
-		self.current_texture = self.still_texture
+		if self.health > 0:
+			self.current_texture = self.still_texture
 
-		if self.flipped:
-			self.current_texture = pygame.transform.flip(self.still_texture, True, False)
+
+			if self.flipped:
+				self.current_texture = pygame.transform.flip(self.still_texture, True, False)
 
 		# else:
 		# 	self.current_texture = self.still_texture
@@ -137,7 +139,7 @@ class Enemy(Player):
 
 
 
-		if self.hurt or self.dead:
+		if self.hurt or self.dead or self.health <= 0:
 			return
 
 

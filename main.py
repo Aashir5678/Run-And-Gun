@@ -530,12 +530,13 @@ def main(seed=None):
 
 			throwing_grenade = randint(0, ENEMY_GRENADE_THROW_CHANCE - (int(difficulty) * DIFFICULTY_MULTIPLIER))
 
-			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK:
+			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK and enemy.health > 0:
 				enemy.aimed_shot = False
 				enemy.take_damage()
-				enemy.fling(player)
-				enemy.throwing_grenade = False
 
+				if enemy.health > 0:
+					enemy.fling(player)
+					enemy.throwing_grenade = False
 
 				# # Possibly add fling with an angle upwards
 				# if player.x > enemy.x:
@@ -552,7 +553,7 @@ def main(seed=None):
 				# 	else:
 				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
-			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and enemy.grenade is None and enemies_killed >= 4:
+			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and enemy.grenade is None and enemies_killed >= 4 and enemy.health > 0:
 				enemy.throwing_grenade = True
 				enemy.aimed_shot = False
 				enemy.aiming = False

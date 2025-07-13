@@ -100,9 +100,9 @@ class Player:
 			# 	# pygame.time.delay(5000)
 
 
-
 			if self.death_textures is not None and self.animation_stages["death"] < len(self.death_textures):
 				self.current_texture = self.death_textures[self.animation_stages["death"]]
+
 
 
 
