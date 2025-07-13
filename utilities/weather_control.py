@@ -149,7 +149,7 @@ class Weather:
 
 	def handle_rain(self):
 		if not self.raining and randint(0, RAIN_CHANCE) == 0 and not self.in_transition:
-			self.rain_freq = randint(3, MAX_RAIN_FREQ)
+			self.rain_freq = randint(5, MAX_RAIN_FREQ)
 			# self.rain_freq = 2
 
 			self.thunder_freq = (self.rain_freq * FPS * 4) # Range: Every 4 seconds to 1 minute
@@ -170,20 +170,23 @@ class Weather:
 
 
 class Rain:
-	def __init__(self, screen, x, y, vel_y):
+	def __init__(self, screen, x, y, vel_y, vel_x = 0, color = RAIN_BLUE):
 		self.screen = screen
 		self.x = x
 		self.y = y
+		self.color = color
+		self.vel_x = vel_x
 		self.vel_y = vel_y
 
 		self.rect = pygame.Rect(self.x, self.y, RAIN_WIDTH, RAIN_HEIGHT)
 
 	def draw(self):
-		pygame.draw.rect(self.screen, RAIN_BLUE, self.rect)
+		pygame.draw.rect(self.screen, self.color, self.rect)
 
 
 	def update(self):
 		self.y += self.vel_y
+		self.x += self.vel_x
 		self.rect = pygame.Rect(self.x, self.y, RAIN_WIDTH, RAIN_HEIGHT)
 
 	def hit_block(self, block):

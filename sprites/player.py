@@ -1,6 +1,8 @@
 
 from utilities.constants import *
 from utilities.map_generator import Block
+from utilities.weather_control import Rain
+from random import uniform, randint
 import pygame
 import math
 
@@ -52,6 +54,7 @@ class Player:
 		self.sliding = False
 		self.attacking = False
 		self.throwing_grenade = False
+		self.blood_drops = []
 
 		self.in_animation = False
 		self.block_standing_on = None
@@ -381,39 +384,45 @@ class Player:
 		self.rect.x = self.x
 		self.rect.y = self.y
 
-	def take_damage(self, bullet=None):
-		if bullet is None:
+	def take_damage(self, weapon=None):
+		if weapon is None:
 			self.health -= ATTACK_DAMAGE
 
-			return
-
-		if not self.sitting and not self.lying:
-			if bullet.y <= (self.y + (self.get_height() // 4)):
-				self.health -= HEAD_SHOT_DAMAGE
-
-			elif bullet.y <= (self.y + (self.get_height() // 2)):
-				self.health -= BODY_SHOT_DAMAGE
-
-			else:
-				self.health -= LEG_SHOT_DAMAGE
 
 
+		elif isinstance(weapon, Bullet):
+			if not self.sitting and not self.lying:
+				if weapon.y <= (self.y + (self.get_height() // 4)):
+					self.health -= HEAD_SHOT_DAMAGE
 
-		elif self.sitting:
-			if bullet.y <= (self.y + (self.get_height() // 3)):
-				self.health -= HEAD_SHOT_DAMAGE
+				elif weapon.y <= (self.y + (self.get_height() // 2)):
+					self.health -= BODY_SHOT_DAMAGE
 
-			else:
-				self.health -= BODY_SHOT_DAMAGE
+				else:
+					self.health -= LEG_SHOT_DAMAGE
 
 
 
-		else:
-			if bullet.y <= (self.y + (self.get_height() // 2)):
-				self.health -= HEAD_SHOT_DAMAGE
+			elif self.sitting:
+				if weapon.y <= (self.y + (self.get_height() // 3)):
+					self.health -= HEAD_SHOT_DAMAGE
+
+				else:
+					self.health -= BODY_SHOT_DAMAGE
+
+
 
 			else:
-				self.health -= BODY_SHOT_DAMAGE
+				if weapon.y <= (self.y + (self.get_height() // 2)):
+					self.health -= HEAD_SHOT_DAMAGE
+
+				else:
+					self.health -= BODY_SHOT_DAMAGE
+
+
+		if BLOOD:
+			for i in range(randint(5, 20)):
+				self.blood_drops.append(Rain(self.screen, self.x + self.get_width() // 2, self.y + self.get_height() // 2, uniform(-10, 3), vel_x=uniform(-2.5, 2.5), color=(128, 0, 0)))
 
 
 	def handle_slide(self, scroll_speed=None, raining=False):
@@ -520,6 +529,17 @@ class Player:
 		# print (self.y)
 		self.rect.x = self.x
 		self.rect.y = self.y
+
+		for drop in self.blood_drops:
+			drop.update()
+
+			if drop.y > SCREEN_HEIGHT:
+				self.blood_drops.remove(drop)
+				continue
+
+			drop.vel_y += self.acc_y
+			drop.draw()
+
 
 	def draw(self):
 		self.screen.blit(self.current_texture, (self.x, self.y))

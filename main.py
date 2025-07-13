@@ -217,7 +217,7 @@ def main(seed=None):
 				if not player.sitting and not player.lying and not player.sliding:
 					player.hurt = True
 
-				player.take_damage(bullet=bullet)
+				player.take_damage(weapon=bullet)
 				bullets.remove(bullet)
 
 
@@ -226,7 +226,7 @@ def main(seed=None):
 				if bullet.hit_entity(enemy) and bullet.is_player_bullet():
 					# enemies.remove(enemy)
 
-					enemy.take_damage(bullet=bullet)
+					enemy.take_damage(weapon=bullet)
 					enemy.hurt = True
 
 					bullets.remove(bullet)
@@ -604,6 +604,8 @@ def main(seed=None):
 					
 					damage = (- MAX_GRENADE_DAMAGE *  dist / (GRENADE_RADIUS)) + MAX_GRENADE_DAMAGE
 					player.health -= damage
+
+				player.take_damage(weapon=enemy.grenade)
 
 
 
