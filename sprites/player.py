@@ -251,11 +251,11 @@ class Player:
 
 					self.animation_stages["sitting_shot"] += 1
 
-					if self.flipped:
+					if self.flipped and not self.sliding:
 						self.x += RECOIL * 2
 						self.current_texture = pygame.transform.flip(self.current_texture, True, False)
 
-					else:
+					elif not self.sliding:
 						self.x -= RECOIL * 2
 
 					if self.animation_stages["sitting_shot"] >= len(self.sitting_shooting_textures):
@@ -421,7 +421,7 @@ class Player:
 
 
 		if BLOOD:
-			for i in range(randint(5, 20)):
+			for i in range(randint(0, BLOOD_CONSTANT)):
 				self.blood_drops.append(Rain(self.screen, self.x + self.get_width() // 2, self.y + self.get_height() // 2, uniform(-10, 3), vel_x=uniform(-2.5, 2.5), color=(128, 0, 0)))
 
 

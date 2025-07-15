@@ -151,9 +151,9 @@ def main(seed=None):
 
 			if block.x < -SPRINTING_VEL * BLOCK_SIZE:
 				blocks.remove(block)
-
 				if block in surface_blocks:
 					surface_blocks.remove(block)
+
 
 
 
@@ -530,7 +530,7 @@ def main(seed=None):
 
 			throwing_grenade = randint(0, ENEMY_GRENADE_THROW_CHANCE - (int(difficulty) * DIFFICULTY_MULTIPLIER))
 
-			if abs(enemy.x - player.x) <= ATTACK_RANGE and player.attacking and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK and enemy.health > 0:
+			if abs(enemy.x - player.x) <= ATTACK_RANGE and (player.attacking or player.sliding) and not enemy.flinged and player.stamina >= STAMINA_TO_ATTACK and enemy.health > 0:
 				enemy.aimed_shot = False
 				enemy.take_damage()
 
@@ -717,6 +717,7 @@ def handle_movement(keys, player, ticks):
 		player.running = False
 		player.animation_stages["standing_reload"] = 0
 		player.standing_reload = False
+
 
 	elif not player.sliding:
 		# player.vel_x = 0
