@@ -44,14 +44,17 @@ def main(seed=None):
 	aim_texture, aimed_shooting_textures, attack_textures,  sitting_shooting_textures, standing_reload_textures, no_aim_shooting_textures = load_player_offense_assets()
 	bullet_texture, empty_bullet_texture =  load_bullet_assets()
 
+	prev_vol = 1.0
+	volume = 1.0
 
 	gun_channel = pygame.mixer.Channel(0)
 	music_channel = pygame.mixer.Channel(1)
 
-	gun_channel.set_volume(0.4)
+	gun_channel.set_volume(GUN_MAX_VOLUME * volume)
 
-	health_bar = Bar(screen, (20, 40), HEALTH_RED)
-	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW)
+	health_bar = Bar(screen, (20, 40), HEALTH_RED, back_ground_color=(40, 3, 3))
+	stamina_bar = Bar(screen, (20, 80), STAMINA_YELLOW, back_ground_color=(88, 94, 4))
+	sound_bar = Bar(screen, (SCREEN_WIDTH -  50, (SCREEN_HEIGHT // 2) - (SCREEN_HEIGHT // 4)), DARK_BLUE, orientation="vertical")
 
 	ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(bullet_texture, 90), 3)
 	empty_ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(empty_bullet_texture, 90), 3)
@@ -115,6 +118,22 @@ def main(seed=None):
 				run = False
 				break
 
+			elif event.type == pygame.MOUSEWHEEL:
+				if event.y > 0 and volume < 1.0:
+					prev_vol = volume
+					volume += 0.05
+					sound_bar.set_value(volume)
+					gun_channel.set_volume(volume * GUN_MAX_VOLUME)
+					weather.adjust_volume(volume)
+
+				elif event.y < 0 and volume > 0:
+					prev_vol = volume
+					volume -= 0.05
+
+					sound_bar.set_value(volume)
+					gun_channel.set_volume(volume * GUN_MAX_VOLUME)
+					weather.adjust_volume(volume)
+
 
 		keys = pygame.key.get_pressed()
 		if player.health > 0 and not player.noaim_shooting:
@@ -122,6 +141,22 @@ def main(seed=None):
 
 			if keys[pygame.K_r] and reload_sfx is not None and player.ammo < ROUNDS_IN_MAG:
 				gun_channel.play(reload_sfx)
+
+			elif keys[pygame.K_m] and volume > 0 and ticks % 5 == 0:
+				prev_vol = volume
+				volume = 0
+				sound_bar.set_value(volume)
+				gun_channel.set_volume(volume * GUN_MAX_VOLUME)
+				weather.adjust_volume(volume)
+
+			elif keys[pygame.K_m] and volume == 0 and ticks % 5 == 0:
+				volume = prev_vol
+				sound_bar.set_value(volume)
+				gun_channel.set_volume(volume * GUN_MAX_VOLUME)
+				weather.adjust_volume(volume)
+
+
+
 
 
 
@@ -252,6 +287,7 @@ def main(seed=None):
 
 
 		mx, my = pygame.mouse.get_pos()
+
 		
 		if pygame.mouse.get_pressed()[2] and pygame.mouse.get_pressed()[0] and ticks % SHOOTING_COOLDOWN == 0 and player.ammo > 0 and not player.jumping and not player.hurt and player.health > 0:
 
@@ -496,12 +532,14 @@ def main(seed=None):
 
 		health_bar.set_value(player.health)
 		stamina_bar.set_value(player.stamina)
+
 		# print (player.health)
 
 		# if player.health > 0:
 
 		stamina_bar.draw()
 		health_bar.draw()
+		sound_bar.draw()
 		draw_ammo(screen, player.ammo, ammo_texture, empty_ammo_texture)
 
 

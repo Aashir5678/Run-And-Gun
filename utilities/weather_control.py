@@ -30,8 +30,8 @@ class Weather:
 		self.rain_channel = pygame.mixer.Channel(2)
 		self.thunder_channel = pygame.mixer.Channel(3)
 
-		self.rain_channel.set_volume(0.25)
-		self.thunder_channel.set_volume(0.7)
+		self.rain_channel.set_volume(RAIN_MAX_VOLUME)
+		self.thunder_channel.set_volume(THUNDER_MAX_VOLUME)
 
 		self.red = self.sky_color[0]
 		self.green = self.sky_color[1]
@@ -42,6 +42,10 @@ class Weather:
 		self.rain_speed = 0
 		self.rain_duration = 0
 		self.in_transition = False
+
+	def adjust_volume(self, volume):
+		self.rain_channel.set_volume(RAIN_MAX_VOLUME * volume)
+		self.thunder_channel.set_volume(THUNDER_MAX_VOLUME * volume)
 
 	def stop(self):
 		self.rain_channel.stop()
