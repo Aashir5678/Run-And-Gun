@@ -32,9 +32,7 @@ def main(seed=None):
 
 	# Load assets
 
-
-
-	# still_player_texture, sitting_player_texture, lying_player_texture, walking_textures, running_textures, aim_texture, aimed_shooting_textures, attack_textures, sitting_shoot, standing_reload_textures, no_aim_shooting_textures, bullet_texture, empty_bullet_texture, flip_textures = load_player_assets()
+	
 	hurt_textures, death_textures = load_player_hurt_assets()
 	heart_texture, stamina_texture = load_boost_textures()
 	single_shot_sfx, reload_sfx, rain_sfx = load_sfx()
@@ -60,24 +58,16 @@ def main(seed=None):
 	empty_ammo_texture = pygame.transform.scale_by(pygame.transform.rotate(empty_bullet_texture, 90), 3)
 
 	enemy_standing_texture, enemy_walking_textures, enemy_running_textures, enemy_standing_shooting_textures, enemy_hurt_textures, enemy_dead_textures, enemy_grenade_textures = load_enemy_assets()
-	# print (len(enemy_walking_textures))
 	bullets = []
 
 	enemies = []
-	# health_boosts = []
-	# stamina_boosts = []
-
 	boosts = []
 	difficulty = 0
 	enemies_killed = 0
 
 	rain_freq = 10
 	rain_speed = 20
-	# rain = generate_rain(screen, rain_speed, rain_freq)
 	weather = Weather(screen, SKY_BLUE)
-
-	# enemies = [Enemy(screen, SCREEN_WIDTH * 3 // 4, 0, enemy_standing_texture, enemy_walking_textures, None)]
-
 
 	if seed is None:
 		seed = randint(-9999, 9999)
@@ -99,9 +89,6 @@ def main(seed=None):
 
 
 	while run:
-		# if not music_channel.get_busy():
-		# 	music_channel.queue(song)
-		# print (int(player.blocks_travelled))
 		clock.tick(FPS)
 
 		player.blocks_travelled += scroll_speed / BLOCK_SIZE
@@ -121,14 +108,14 @@ def main(seed=None):
 			elif event.type == pygame.MOUSEWHEEL:
 				if event.y > 0 and volume < 1.0:
 					prev_vol = volume
-					volume += 0.05
+					volume += 0.1
 					sound_bar.set_value(volume)
 					gun_channel.set_volume(volume * GUN_MAX_VOLUME)
 					weather.adjust_volume(volume)
 
 				elif event.y < 0 and volume > 0:
 					prev_vol = volume
-					volume -= 0.05
+					volume -= 0.1
 
 					sound_bar.set_value(volume)
 					gun_channel.set_volume(volume * GUN_MAX_VOLUME)
@@ -175,9 +162,6 @@ def main(seed=None):
 
 
 		for index, block in enumerate(blocks):
-			
-			# if player.health > 0:
-			
 			if block.x >= -BLOCK_SIZE and block.x <= SCREEN_WIDTH:
 				block.draw()
 
@@ -197,14 +181,6 @@ def main(seed=None):
 				player.y = block.y - player.get_height() # + 1
 				player.vel_y = 0
 				player.block_standing_on = block
-
-
-				# if player.jumping and (player.animation_stages["flip"] != 0 and player.animation_stages["flip"] != len(player.flip_textures) - 1):
-				# 	player.health = 0
-
-				# player.jumping = False
-
-				# player.animation_stages["flip"] = 0
 
 
 				if player.vel_x == 0 and not player.in_animation:
@@ -232,9 +208,6 @@ def main(seed=None):
 						enemy.shoot_dist = enemy.x
 
 
-					# enemy.acc_y = 0
-
-
 					if enemy.vel_x == 0 and not enemy.in_animation:
 						enemy.current_texture = enemy.still_texture
 						enemy.animation_stages["walk"] = 0
@@ -259,8 +232,6 @@ def main(seed=None):
 			for enemy in enemies:
 
 				if bullet.hit_entity(enemy) and bullet.is_player_bullet():
-					# enemies.remove(enemy)
-
 					enemy.take_damage(weapon=bullet)
 					enemy.hurt = True
 
@@ -450,8 +421,7 @@ def main(seed=None):
 
 
 		elif player.x < SCREEN_WIDTH // 4 and player.vel_x < 0 or player.in_animation:
-			scroll_speed = 0 # player.vel_x
-			# player.vel_x = 0
+			scroll_speed = 0
 
 			if player.x < 0:
 				player.vel_x = 0
@@ -503,29 +473,14 @@ def main(seed=None):
 			enemy = Enemy(screen, random_block.x, random_block.y - enemy_standing_texture.get_height(), enemy_standing_texture, enemy_walking_textures, None, running_textures=enemy_running_textures, aimed_shooting_textures=enemy_standing_shooting_textures, hurt_textures=enemy_hurt_textures, death_textures=enemy_dead_textures, enemy_grenade_textures=enemy_grenade_textures)
 			enemies.append(enemy)
 
-			# if grenade is None:
-			# 	grenade = Grenade(screen, player, 6)
-			# 	grenade.find_trajectory(enemy)
 
 
+		if player.health <= 0 and player.dead:
+			gun_channel.stop()
+			music_channel.stop()
+			weather.stop()
 
-		if player.health <= 0:
-			# enemies.clear()
-			# bullets.clear()
-			# boosts.clear()
-
-			# gun_channel.stop()
-			# music_channel.stop()
-			# weather.stop()
-
-			# player.ammo = ROUNDS_IN_MAG
-
-			if player.dead:
-				gun_channel.stop()
-				music_channel.stop()
-				weather.stop()
-
-				return True
+			return True
 
 
 		handle_player_stats(player, raining=weather.raining)
@@ -533,9 +488,6 @@ def main(seed=None):
 		health_bar.set_value(player.health)
 		stamina_bar.set_value(player.stamina)
 
-		# print (player.health)
-
-		# if player.health > 0:
 
 		stamina_bar.draw()
 		health_bar.draw()
@@ -549,7 +501,6 @@ def main(seed=None):
 			if enemy.grenade is not None:
 				enemy.grenade.x -= scroll_speed
 
-			# print (f"{enemy.direction} and {str(enemy.flipped)}")
 			enemy.change_movement_texture(player, ticks)
 
 
@@ -576,20 +527,6 @@ def main(seed=None):
 					enemy.fling(player)
 					enemy.throwing_grenade = False
 
-				# # Possibly add fling with an angle upwards
-				# if player.x > enemy.x:
-				# 	if player.vel_x != 0:
-				# 		enemy.vel_x = -ATTACK_KNOCKBACK * player.vel_x
-
-				# 	else:
-				# 		enemy.vel_x = -ATTACK_KNOCKBACK
-
-				# else:
-				# 	if player.vel_x != 0:
-				# 		enemy.vel_x = ATTACK_KNOCKBACK * player.vel_x
-
-				# 	else:
-				# 		enemy.vel_x = ATTACK_KNOCKBACK
 
 			elif abs(enemy.x - player.x) < SCREEN_WIDTH * 3 / 4 and throwing_grenade == 0 and enemy.grenade is None and enemies_killed >= 4 and enemy.health > 0:
 				enemy.throwing_grenade = True
@@ -598,17 +535,12 @@ def main(seed=None):
 
 
 			if enemy.grenade is not None and not enemy.grenade.explode:
-				# enemy.grenade.update()
-				# enemy.grenade.draw()
-
-
 				if enemy.grenade.hit_entity(player):
 					player.hurt = True
 					enemy.grenade.y -= enemy.grenade.explosion_textures[0].get_height()
 					enemy.grenade.x -= (enemy.grenade.explosion_textures[0].get_width()) / 2
 					enemy.grenade.explode = True
 
-					# enemy.grenade = None
 
 
 				else:
@@ -618,32 +550,23 @@ def main(seed=None):
 
 							enemy.grenade.explode = True
 
-							# enemy.grenade.x = block.x + BLOCK_SIZE // 2
 							enemy.grenade.y = block.y - enemy.grenade.explosion_textures[0].get_height()
 							enemy.grenade.x = block.x - (enemy.grenade.explosion_textures[0].get_width() / 2)
-							# enemy.grenade = None
 							break
 
-			elif enemy.grenade is not None and enemy.grenade.explode:
+			elif enemy.grenade is not None and enemy.grenade.explode and not enemy.grenade.damaged_player:
 				if enemy.grenade.hit_entity(player):
+					enemy.grenade.damaged_player = True
 					player.hurt = True
-					player.health -= MAX_GRENADE_DAMAGE
+					player.take_damage(weapon="grenade hit")
+
 
 				elif enemy.grenade.distance_from_entity(player) <= GRENADE_RADIUS:
+					enemy.grenade.damaged_player = True
 					player.hurt = True
 
-
-					if enemy.grenade.x < player.x:
-						dist = abs(player.x - enemy.grenade.x)
-
-					else:
-						dist = abs(player.x - enemy.grenade.x  + player.get_width())
-
 					
-					damage = (- MAX_GRENADE_DAMAGE *  dist / (GRENADE_RADIUS)) + MAX_GRENADE_DAMAGE
-					player.health -= damage
-
-				player.take_damage(weapon=enemy.grenade)
+					player.take_damage(weapon=enemy.grenade)
 
 
 
@@ -688,21 +611,6 @@ def main(seed=None):
 				boosts.remove(boost)
 
 
-			# if boost.hit_player(player) and boost.type == "health":
-			# 	player.health += HEALTH_BOOST
-			# 	if player.health > 1.0:
-			# 		player.health = 1.0
-
-			# 	continue
-
-			# elif boost.hit_player(player) and boost.type == "stamina":
-			# 	player.stamina += STAMINA_BOOST
-
-			# 	if player.stamina > 1.0:
-			# 		player.stamina = 1.0
-
-			# 	boosts.remove(boost)
-
 			boost.update(scroll_speed)
 			boost.draw()
 
@@ -714,7 +622,6 @@ def main(seed=None):
 
 
 	print (round(sum(fps_sum) / len(fps_sum), 2))
-	# pygame.quit()
 	return False
 
 
@@ -804,8 +711,6 @@ def handle_movement(keys, player, ticks):
 			player.y += player.get_height()
 
 
-		# else:
-		# 	player.lying = False
 
 	elif keys[pygame.K_f] and not player.attacking and player.ticks_since_attack >= ATTACK_COOLDOWN and player.stamina >= STAMINA_TO_ATTACK:
 		player.attacking = True
@@ -820,7 +725,6 @@ def handle_movement(keys, player, ticks):
 		if not player.sitting:
 			player.sliding = False
 
-		# player.sitting = False
 		player.vel_x = 0
 		player.lying = False
 
@@ -856,7 +760,6 @@ def handle_movement(keys, player, ticks):
 
 	if keys[pygame.K_r] and not player.standing_reload and not player.jumping and player.ammo < ROUNDS_IN_MAG and not player.aiming and not player.attacking:
 		player.running = False
-		# player.sitting = False
 		player.standing_reload = True
 
 		
@@ -913,23 +816,6 @@ def draw_background(screen, player, ticks, scroll_speed, weather):
 	if not weather.raining and not weather.in_transition:
 		screen.fill(SKY_BLUE)
 
-	# elif player.health <= 0:
-	# 	screen.fill(HEALTH_RED)
-
-	# if len(rain) > 0 and player.health > 0:
-	# 	for drop in rain:
-	# 		drop.x -= scroll_speed
-	# 		if drop.y > SCREEN_HEIGHT:
-	# 			rain.remove(drop)
-	# 			continue
-
-	# 		drop.update()
-	# 		drop.draw()
-
-
-	# 	return rain
-
-	# return []
 
 
 if __name__ == "__main__":

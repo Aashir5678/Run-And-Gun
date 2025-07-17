@@ -419,6 +419,22 @@ class Player:
 				else:
 					self.health -= BODY_SHOT_DAMAGE
 
+		elif weapon == "grenade hit":
+			self.health -= MAX_GRENADE_DAMAGE
+
+		else:
+			if weapon.x < self.x:
+				dist = abs(self.x - weapon.x)
+
+			else:
+				dist = abs(self.x - weapon.x  + self.get_width())
+
+			
+			damage = (- MAX_GRENADE_DAMAGE *  dist / (GRENADE_RADIUS)) + MAX_GRENADE_DAMAGE
+			self.health -= damage
+
+
+
 
 		if BLOOD:
 			for i in range(randint(0, BLOOD_CONSTANT)):

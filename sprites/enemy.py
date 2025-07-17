@@ -243,6 +243,7 @@ class Grenade:
 		self.vel_x = 0
 		self.vel_y = 0
 		self.explode = False
+		self.damaged_player = False
 
 		self.user = user
 		self.current_texture = GRENADE_TEXTURE
@@ -299,7 +300,7 @@ class Grenade:
 			self.y += self.vel_y
 
 
-		elif ticks % EXPLODE_ANIMATION_SPEED == 0:
+		elif ticks % EXPLODE_ANIMATION_SPEED == 0 and self.explode:
 			self.current_texture = self.explosion_textures[self.explosion_index]
 
 			self.explosion_index += 1
